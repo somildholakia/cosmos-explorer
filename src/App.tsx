@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Crosshair, RotateCcw, Sparkles, Menu } from 'lucide-react'
+import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Crosshair, RotateCcw, Sparkles, Menu, Shuffle } from 'lucide-react'
 const Universe = lazy(() => import('./Universe'))
 import { objects, type SpaceObject } from './data'
 
@@ -14,6 +14,11 @@ export default function App() {
   const [showCatalogue, setShowCatalogue] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
+  const discover = () => {
+    const candidates = objects.filter(item => item.id !== selected.id)
+    const next = candidates[Math.floor(Math.random() * candidates.length)]
+    if (next) choose(next)
+  }
   const searchInputRef = useRef<HTMLInputElement>(null)
   const catalogueSearchRef = useRef<HTMLInputElement>(null)
 
@@ -58,11 +63,11 @@ export default function App() {
         <div className="rail-bottom"><div className="tiny-orbit"><Orbit size={17}/></div><div><b>THE KNOWN UNIVERSE</b><small>One small step at a time.</small></div></div>
       </aside>
       <section className="universe-stage">
-        <div className="stage-topline"><div><span className="eyebrow">OBSERVATION DECK</span><span className="stage-coordinate"> / SOL SYSTEM · LOCAL GROUP</span></div><div className="stage-tools"><span className="scale-label">SCALE <b>ILLUSTRATIVE</b></span><button className={focusMode?'tool-button selected-tool':'tool-button'} onClick={()=>setFocusMode(!focusMode)} title="Toggle focus mode"><Crosshair size={15}/></button><button className="tool-button" onClick={()=>choose(objects[3])} title="Reset selection"><RotateCcw size={15}/></button></div></div>
-        <div className="canvas-wrap"><Suspense fallback={<div className="scene-loading">Preparing the starfield…</div>}><Universe items={objects} selected={selected} onSelect={choose}/></Suspense><div className="canvas-vignette"/><div className="canvas-label top-left"><span className="label-line"/> MILKY WAY · LOCAL VIEW</div><div className="canvas-label bottom-left"><span className="pulse-dot"/> GRAVITY FIELD ACTIVE</div><div className="canvas-hint"><span>DRAG TO ROTATE</span><span>SCROLL TO ZOOM</span></div>
+        <div className="stage-topline"><div><span className="eyebrow">OBSERVATION DECK</span><span className="stage-coordinate"> / SOL SYSTEM · LOCAL GROUP</span></div><div className="stage-tools"><span className="scale-label">AUTO QUALITY <b>DEVICE OPTIMISED</b></span><button className={focusMode?'tool-button selected-tool':'tool-button'} onClick={()=>setFocusMode(!focusMode)} title="Toggle focus mode"><Crosshair size={15}/></button><button className="tool-button" onClick={()=>choose(objects[3])} title="Return to Earth"><RotateCcw size={15}/></button><button className="tool-button discover-button" onClick={discover} title="Discover a random world"><Shuffle size={15}/></button></div></div>
+        <div className="canvas-wrap"><Suspense fallback={<div className="scene-loading">Preparing the starfield…</div>}><Universe items={objects} selected={selected} onSelect={choose}/></Suspense><div className="canvas-vignette"/><div className="canvas-label top-left"><span className="label-line"/> MILKY WAY · LOCAL VIEW</div><div className="canvas-label bottom-left"><span className="pulse-dot"/> GRAVITY FIELD ACTIVE</div><div className="canvas-hint"><span>DRAG TO ROTATE</span><span>PINCH TO ZOOM</span></div>
           {!focusMode && <div className="object-tooltip"><span className="tooltip-index">SELECTED OBJECT</span><b>{selected.name}</b><small>{formatKind(selected.kind)} · {selected.distance}</small></div>}
         </div>
-        <div className="stage-footer"><span>01 <i/> 14 CELESTIAL OBJECTS</span><span>NOT TO SCALE · CONCEPTUAL SPATIAL MODEL</span><span>DATA: CURATED SCIENCE SUMMARIES</span></div>
+        <div className="stage-footer"><span>01 <i/> 14 CELESTIAL OBJECTS</span><span>TOUCH FRIENDLY · ADAPTIVE RENDERING</span><span>DATA: CURATED SCIENCE SUMMARIES</span></div>
       </section>
       {showInfo && <aside className="info-panel">
         <div className="panel-top"><span className="eyebrow">CELESTIAL DOSSIER <span className="gold">✳</span></span><button className="icon-button" onClick={()=>setShowInfo(false)} aria-label="Close information"><X size={17}/></button></div>
