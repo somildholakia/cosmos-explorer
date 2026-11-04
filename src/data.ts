@@ -119,13 +119,13 @@ export type OrbitalElements = {
 }
 /** Approximate J2000 mean orbital elements; not a live high-precision ephemeris. */
 export const orbitalElements:Record<string,OrbitalElements> = {
- mercury:{semiMajorAxisAU:.3871,eccentricity:.2056,inclinationDeg:7.005,ascendingNodeDeg:48.331,argumentOfPerihelionDeg:29.124,meanAnomalyAtEpochDeg:174.8,periodDays:87.969,axialTiltDeg:.03,visualSpinSeconds:36},
- venus:{semiMajorAxisAU:.7233,eccentricity:.0068,inclinationDeg:3.395,ascendingNodeDeg:76.68,argumentOfPerihelionDeg:54.9,meanAnomalyAtEpochDeg:50.4,periodDays:224.701,axialTiltDeg:177.4,visualSpinSeconds:44,retrograde:true},
- earth:{semiMajorAxisAU:1,eccentricity:.0167,inclinationDeg:0,ascendingNodeDeg:0,argumentOfPerihelionDeg:102.9,meanAnomalyAtEpochDeg:357.6,periodDays:365.256,axialTiltDeg:23.44,visualSpinSeconds:20},
- mars:{semiMajorAxisAU:1.5237,eccentricity:.0934,inclinationDeg:1.85,ascendingNodeDeg:49.56,argumentOfPerihelionDeg:286.5,meanAnomalyAtEpochDeg:19.3,periodDays:686.98,axialTiltDeg:25.19,visualSpinSeconds:20},
- jupiter:{semiMajorAxisAU:5.2025,eccentricity:.0485,inclinationDeg:1.30,ascendingNodeDeg:100.46,argumentOfPerihelionDeg:273.9,meanAnomalyAtEpochDeg:20.1,periodDays:4332.59,axialTiltDeg:3.13,visualSpinSeconds:8.3},
- saturn:{semiMajorAxisAU:9.5415,eccentricity:.0555,inclinationDeg:2.49,ascendingNodeDeg:113.67,argumentOfPerihelionDeg:225.7,meanAnomalyAtEpochDeg:317,periodDays:10759.2,axialTiltDeg:26.73,visualSpinSeconds:9.1},
- uranus:{semiMajorAxisAU:19.188,eccentricity:.0469,inclinationDeg:.77,ascendingNodeDeg:74,argumentOfPerihelionDeg:99,meanAnomalyAtEpochDeg:141.1,periodDays:30685.4,axialTiltDeg:97.77,visualSpinSeconds:14.4,retrograde:true},
- neptune:{semiMajorAxisAU:30.07,eccentricity:.009,inclinationDeg:1.77,ascendingNodeDeg:131.8,argumentOfPerihelionDeg:141.4,meanAnomalyAtEpochDeg:256.2,periodDays:60189,axialTiltDeg:28.32,visualSpinSeconds:13.5}
+ mercury:{semiMajorAxisAU:.38709843,eccentricity:.20563661,inclinationDeg:7.005594,ascendingNodeDeg:48.339618,argumentOfPerihelionDeg:29.1181,meanAnomalyAtEpochDeg:174.79395,periodDays:87.969,axialTiltDeg:.03,visualSpinSeconds:36},
+ venus:{semiMajorAxisAU:.72332102,eccentricity:.00676399,inclinationDeg:3.397775,ascendingNodeDeg:76.672615,argumentOfPerihelionDeg:55.0949,meanAnomalyAtEpochDeg:50.21215,periodDays:224.701,axialTiltDeg:177.4,visualSpinSeconds:44,retrograde:true},
+ earth:{semiMajorAxisAU:1.00000018,eccentricity:.01673163,inclinationDeg:-.000543,ascendingNodeDeg:-5.112604,argumentOfPerihelionDeg:108.04266,meanAnomalyAtEpochDeg:357.53686,periodDays:365.256,axialTiltDeg:23.44,visualSpinSeconds:20},
+ mars:{semiMajorAxisAU:1.52371243,eccentricity:.09336511,inclinationDeg:1.851819,ascendingNodeDeg:49.71321,argumentOfPerihelionDeg:286.36934,meanAnomalyAtEpochDeg:19.34932,periodDays:686.98,axialTiltDeg:25.19,visualSpinSeconds:20},
+ jupiter:{semiMajorAxisAU:5.20248019,eccentricity:.04853590,inclinationDeg:1.298614,ascendingNodeDeg:100.292827,argumentOfPerihelionDeg:273.98213,meanAnomalyAtEpochDeg:20.05984,periodDays:4332.59,axialTiltDeg:3.13,visualSpinSeconds:8.3},
+ saturn:{semiMajorAxisAU:9.54149883,eccentricity:.05550825,inclinationDeg:2.494241,ascendingNodeDeg:113.639987,argumentOfPerihelionDeg:339.22137,meanAnomalyAtEpochDeg:317.21435,periodDays:10759.2,axialTiltDeg:26.73,visualSpinSeconds:9.1},
+ uranus:{semiMajorAxisAU:19.18797948,eccentricity:.04685740,inclinationDeg:.772981,ascendingNodeDeg:73.962502,argumentOfPerihelionDeg:98.47154,meanAnomalyAtEpochDeg:141.76872,periodDays:30685.4,axialTiltDeg:97.77,visualSpinSeconds:14.4,retrograde:true},
+ neptune:{semiMajorAxisAU:30.06952752,eccentricity:.00895439,inclinationDeg:1.770055,ascendingNodeDeg:131.786359,argumentOfPerihelionDeg:274.89523,meanAnomalyAtEpochDeg:257.54131,periodDays:60189,axialTiltDeg:28.32,visualSpinSeconds:13.5}
 }
 export const lunarOrbit={semiMajorAxisScene:.48,eccentricity:.0549,inclinationDeg:5.145,periodDays:27.3217,meanAnomalyAtEpochDeg:115}
