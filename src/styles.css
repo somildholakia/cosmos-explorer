@@ -185,3 +185,17 @@ body{background:#f5eee4;color:#352a30}
  .simulation-controls{gap:4px;padding:0 5px}.simulation-controls>span{display:none}
  .scale-label{display:none}.stage-tools{gap:5px}
 }
+
+/* Expanded celestial catalogue and richer scientific dossiers */
+.filter-dot.dwarf-planet{background:#bc8b67}.filter-dot.asteroid{background:#9b8b72}.filter-dot.comet{background:#79a99b}.filter-dot.exoplanet{background:#9c79a9}
+.science-card{margin-top:12px;padding:12px 11px;border:1px solid rgba(171,119,84,.2);border-radius:8px;background:linear-gradient(145deg,rgba(237,204,174,.22),rgba(203,171,198,.14),rgba(165,195,161,.12))}
+.science-card>.section-row{margin-bottom:9px;color:#a56b55}
+.science-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.science-grid>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:8px;border-radius:6px;background:rgba(255,255,255,.57)}
+.science-grid>div.science-wide{grid-column:1/-1}
+.science-grid span{font:500 7px 'DM Mono',monospace;letter-spacing:.09em;color:#a77b67}
+.science-grid b{font:500 9px/1.45 'DM Sans',sans-serif;color:#594448}
+.highlight-list{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.highlight-list span{display:flex;align-items:flex-start;gap:8px;padding:6px 7px;border-radius:5px;background:rgba(255,255,255,.48);font:400 8px/1.4 'DM Sans',sans-serif;color:#705c58}
+.highlight-list i{font:8px 'DM Mono',monospace;font-style:normal;color:#bd7658;flex-shrink:0}
+@media(max-width:620px){.science-card{padding:10px 9px}.science-grid b{font-size:8px}.highlight-list span{font-size:8px}}

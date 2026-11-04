@@ -3,7 +3,7 @@ import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Cross
 const Universe = lazy(() => import('./Universe'))
 import { objects, objectProfiles, type SpaceObject } from './data'
 
-const filters = ['All', 'Planet', 'Star', 'Moon', 'Galaxy', 'Nebula', 'Black hole', 'Saved'] as const
+const filters = ['All', 'Planet', 'Dwarf planet', 'Moon', 'Asteroid', 'Comet', 'Exoplanet', 'Star', 'Galaxy', 'Nebula', 'Black hole', 'Saved'] as const
 const formatKind = (kind: string) => kind.toUpperCase()
 
 export default function App() {
@@ -35,7 +35,7 @@ export default function App() {
   const isSaved = savedIds.includes(selected.id)
   const selectedProfile = objectProfiles[selected.id]
   const planetCount = objects.filter(item => item.kind === 'Planet').length
-  const deepSpaceCount = objects.filter(item => ['Galaxy', 'Nebula', 'Black hole'].includes(item.kind)).length
+  const deepSpaceCount = objects.filter(item => ['Galaxy', 'Nebula', 'Black hole', 'Exoplanet'].includes(item.kind)).length
 
   useEffect(() => {
     try { localStorage.setItem('cosmos:saved-worlds', JSON.stringify(savedIds)) } catch { /* Storage can be unavailable in private browsing. */ }
@@ -96,7 +96,7 @@ export default function App() {
     </section>
     <section className="workspace" id="explore">
       <aside className="left-rail">
-        <div className="rail-kicker">FIELD NOTES <span>01 — 08</span></div>
+        <div className="rail-kicker">FIELD NOTES <span>01 — {String(objects.length).padStart(2,'0')}</span></div>
         <div className="rail-heading">Explore the<br/><em>unexplored.</em></div>
         <p className="rail-copy">A living map of the cosmos. Move through space, discover extraordinary worlds, and get closer to the science behind them.</p>
         <div className="search-box"><Search size={16}/><input ref={searchInputRef} value={query} onChange={e=>{setQuery(e.target.value);setShowCatalogue(true)}} placeholder="Find a world..." aria-label="Search celestial objects"/><kbd>⌘ K</kbd></div>
@@ -123,6 +123,15 @@ export default function App() {
           <div className="profile-tile tile-rotation"><span>ROTATION</span><b>{selectedProfile.rotation}</b></div>
           <div className="profile-tile tile-gravity"><span>GRAVITY</span><b>{selectedProfile.gravity}</b></div>
         </div>
+        {(selectedProfile.mass || selectedProfile.discovery || selectedProfile.mission) && <section className="science-card">
+          <div className="section-row"><span>SCIENCE SNAPSHOT</span><Sparkles size={14}/></div>
+          <div className="science-grid">
+            {selectedProfile.mass && <div><span>MASS</span><b>{selectedProfile.mass}</b></div>}
+            {selectedProfile.discovery && <div><span>DISCOVERED / RECORDED</span><b>{selectedProfile.discovery}</b></div>}
+            {selectedProfile.mission && <div className="science-wide"><span>MISSION / OBSERVATIONS</span><b>{selectedProfile.mission}</b></div>}
+          </div>
+          {selectedProfile.highlights?.length ? <div className="highlight-list">{selectedProfile.highlights.map((highlight,index)=><span key={highlight}><i>{String(index+1).padStart(2,'0')}</i>{highlight}</span>)}</div> : null}
+        </section>
         <div className="about-section"><div className="section-row"><span>OVERVIEW</span><Info size={14}/></div><p>{selected.description}</p></div>
         <section className="structure-card">
           <div className="structure-heading"><div><span className="eyebrow">ANATOMY / COMPOSITION</span><b>{selectedProfile.structureTitle}</b></div><Layers3 size={17}/></div>

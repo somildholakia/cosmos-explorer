@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Stars, Sparkles } from '@react-three/drei'
 import * as THREE from 'three'
-import { lunarOrbit, orbitalElements, type SpaceObject } from './data'
+import { lunarOrbit, orbitalElements, satelliteOrbits, type SpaceObject } from './data'
 
 const textureUrls: Record<string, string> = {
   sun: 'https://play.solarsystemscope.com/textures/download/2k_sun.jpg',
@@ -88,7 +88,7 @@ function useDisposableTexture(url?: string) {
 }
 
 const AU_SCALE=2.05
-const deepSpacePositions:Record<string,[number,number,number]>={sirius:[17,3.6,-13],andromeda:[-17,8,-18],orion:[12,-6,-18],m87:[-19,-3.5,15]}
+const deepSpacePositions:Record<string,[number,number,number]>={sirius:[17,3.6,-13],andromeda:[-17,8,-18],orion:[12,-6,-18],m87:[-19,-3.5,15],proxima:[-15,-5,-21],betelgeuse:[20,9,12],triangulum:[-22,1,12],crab:[8,10,-23],'sagittarius-a':[-8,-10,22],'trappist-1e':[23,-5,-12],'kepler-186f':[-24,-7,-8]}
 const radians=(d:number)=>d*Math.PI/180
 const displayOrbitRadius=(a:number)=>AU_SCALE*Math.pow(a,.52)
 function solveEccentricAnomaly(M:number,e:number){
@@ -110,31 +110,40 @@ function planetPosition(id:string,days:number){
  const M=radians(el.meanAnomalyAtEpochDeg)+Math.PI*2*days/el.periodDays
  return orientOrbitPoint(orbitalPlanePosition(displayOrbitRadius(el.semiMajorAxisAU),el.eccentricity,M),el.inclinationDeg,el.ascendingNodeDeg,el.argumentOfPerihelionDeg)
 }
-function positionFor(item:SpaceObject,days:number){
- if(item.id==='sun')return new THREE.Vector3()
- if(item.id==='moon'){
-   const earth=planetPosition('earth',days),M=radians(lunarOrbit.meanAnomalyAtEpochDeg)+Math.PI*2*days/lunarOrbit.periodDays
-   return earth.add(orientOrbitPoint(orbitalPlanePosition(lunarOrbit.semiMajorAxisScene,lunarOrbit.eccentricity,M),lunarOrbit.inclinationDeg,0,0))
- }
- if(item.kind!=='Planet')return new THREE.Vector3(...(deepSpacePositions[item.id]??[0,0,0]))
- return planetPosition(item.id,days)
+
+function satelliteFor(id:string){
+ if(id==='moon')return {parentId:'earth',semiMajorAxisScene:lunarOrbit.semiMajorAxisScene,eccentricity:lunarOrbit.eccentricity,inclinationDeg:lunarOrbit.inclinationDeg,ascendingNodeDeg:0,argumentOfPerihelionDeg:0,meanAnomalyAtEpochDeg:lunarOrbit.meanAnomalyAtEpochDeg,periodDays:lunarOrbit.periodDays}
+ return satelliteOrbits[id]
 }
-function OrbitTrack({item}:{item:SpaceObject}){
- const el=orbitalElements[item.id]
+function positionForId(id:string,days:number):THREE.Vector3{
+ if(id==='sun')return new THREE.Vector3()
+ const satellite=satelliteFor(id)
+ if(satellite){
+  const parent=positionForId(satellite.parentId,days)
+  const M=radians(satellite.meanAnomalyAtEpochDeg)+Math.PI*2*days/satellite.periodDays
+  return parent.add(orientOrbitPoint(orbitalPlanePosition(satellite.semiMajorAxisScene,satellite.eccentricity,M),satellite.inclinationDeg,satellite.ascendingNodeDeg,satellite.argumentOfPerihelionDeg))
+ }
+ if(orbitalElements[id])return planetPosition(id,days)
+ return new THREE.Vector3(...(deepSpacePositions[id]??[0,0,0]))
+}
+function positionFor(item:SpaceObject,days:number){return positionForId(item.id,days)}
+function OrbitTrack({item,simulationDays}:{item:SpaceObject;simulationDays:{current:number}}){
+ const el=orbitalElements[item.id],satellite=satelliteFor(item.id),anchor=useRef<THREE.Group>(null!)
  const geometry=useMemo(()=>{
-  if(!el)return new THREE.BufferGeometry()
-  const points:number[]=[],a=displayOrbitRadius(el.semiMajorAxisAU)
-  for(let step=0;step<=240;step++){
-    const M=step/240*Math.PI*2
-    const p=orientOrbitPoint(orbitalPlanePosition(a,el.eccentricity,M),el.inclinationDeg,el.ascendingNodeDeg,el.argumentOfPerihelionDeg)
-    points.push(p.x,p.y,p.z)
+  const points:number[]=[]
+  if(el){
+   const a=displayOrbitRadius(el.semiMajorAxisAU)
+   for(let step=0;step<=240;step++){const M=step/240*Math.PI*2;const p=orientOrbitPoint(orbitalPlanePosition(a,el.eccentricity,M),el.inclinationDeg,el.ascendingNodeDeg,el.argumentOfPerihelionDeg);points.push(p.x,p.y,p.z)}
+  }else if(satellite){
+   for(let step=0;step<=160;step++){const M=step/160*Math.PI*2;const p=orientOrbitPoint(orbitalPlanePosition(satellite.semiMajorAxisScene,satellite.eccentricity,M),satellite.inclinationDeg,satellite.ascendingNodeDeg,satellite.argumentOfPerihelionDeg);points.push(p.x,p.y,p.z)}
   }
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(points,3));return g
- },[el])
+ },[el,satellite])
  useEffect(()=>()=>geometry.dispose(),[geometry])
- const orbitLine=useMemo(()=>new THREE.Line(geometry,new THREE.LineBasicMaterial({color:'#c98b68',transparent:true,opacity:.34,depthWrite:false})),[geometry])
+ const orbitLine=useMemo(()=>new THREE.Line(geometry,new THREE.LineBasicMaterial({color:satellite?'#d8a57c':'#c98b68',transparent:true,opacity:satellite?.24:.34,depthWrite:false})),[geometry,satellite])
  useEffect(()=>()=>orbitLine.material.dispose(),[orbitLine])
- return <primitive object={orbitLine}/>
+ useFrame(()=>{if(anchor.current)anchor.current.position.copy(satellite?positionForId(satellite.parentId,simulationDays.current):new THREE.Vector3())})
+ return <group ref={anchor}><primitive object={orbitLine}/></group>
 }
 
 function GalaxyStructure({ color, pointsCount }: { color: string; pointsCount: number }) {
@@ -204,6 +213,8 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
   const mesh = useRef<THREE.Mesh>(null!)
   const group = useRef<THREE.Group>(null!)
   const isSun = item.id === 'sun'
+  const isStar = item.kind === 'Star'
+  const isComet = item.kind === 'Comet'
   const isEarth = item.id === 'earth'
   const isSaturn = item.id === 'saturn'
   const isUranus = item.id === 'uranus'
@@ -217,14 +228,14 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
   useFrame((_,delta) => {
     if (!group.current) return
     group.current.position.copy(positionFor(item,simulationDays.current))
-    if (simulationRunning && mesh.current && !isBlackHole && item.id!=='moon') {
+    if (simulationRunning && mesh.current && !isBlackHole && item.kind!=='Moon') {
       const spinPeriod=orbit?.visualSpinSeconds ?? (isSun?30:20)
       mesh.current.rotation.y += delta*(Math.PI*2/spinPeriod)*(orbit?.retrograde?-1:1)
     }
   })
 
   return <>
-    {item.kind === 'Planet' && <OrbitTrack item={item} />}
+    {(orbitalElements[item.id] || satelliteFor(item.id)) && <OrbitTrack item={item} simulationDays={simulationDays} />}
     <group ref={group} rotation={[radians(orbit?.axialTiltDeg ?? (isSun?7.25:0)),0,0]}>
       {item.kind === 'Galaxy' ? <>
         <GalaxyStructure color={item.color} pointsCount={profile.galaxyPoints} />
@@ -253,9 +264,9 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
             color={texture ? '#ffffff' : isBlackHole ? '#020308' : item.color}
             roughness={isSun ? .58 : .84}
             metalness={isBlackHole ? .18 : .025}
-            emissive={isSun ? item.color : selected ? item.color : '#000000'}
+            emissive={(isSun || isStar) ? item.color : selected ? item.color : '#000000'}
             emissiveMap={isSun ? texture ?? undefined : undefined}
-            emissiveIntensity={isSun ? .8 : selected ? .1 : .012}
+            emissiveIntensity={isSun ? .8 : isStar ? .48 : selected ? .1 : .012}
           />
         </mesh>
         {!isSun && !isBlackHole && <mesh scale={item.id === 'venus' ? 1.1 : 1.055}>
@@ -265,6 +276,10 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
         {isJupiter && <mesh position={[radius * .94, radius * .11, 0]} scale={[.085, .035, .018]}>
           <sphereGeometry args={[radius, 16, 12]} /><meshBasicMaterial color="#a95742" transparent opacity={.78} />
         </mesh>}
+        {isStar && !isSun && <>
+          <mesh scale={1.55}><sphereGeometry args={[radius,20,20]}/><meshBasicMaterial color={item.color} transparent opacity={.09} side={THREE.BackSide} depthWrite={false}/></mesh>
+          <mesh scale={2.05}><sphereGeometry args={[radius,16,16]}/><meshBasicMaterial color={item.color} transparent opacity={.035} side={THREE.BackSide} depthWrite={false}/></mesh>
+        </>}
         {isSun && <>
           <mesh scale={1.65}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#ffbf69" transparent opacity={.065} side={THREE.BackSide} /></mesh>
           <mesh scale={2.2}><sphereGeometry args={[radius, 24, 24]} /><meshBasicMaterial color="#e89b51" transparent opacity={.022} side={THREE.BackSide} /></mesh>
@@ -289,6 +304,12 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
             <torusGeometry args={[radius * 1.22, radius * .07, 12, profile.lowPower ? 56 : 88]} />
             <meshBasicMaterial color="#fff0c2" transparent opacity={.7} />
           </mesh>
+        </>}
+        {isComet && <>
+          <mesh position={[-radius*2.9,0,0]} rotation={[0,0,-Math.PI/2]} scale={[radius*7,radius*2.1,radius*2.1]}>
+            <coneGeometry args={[1,1,16]}/><meshBasicMaterial color="#9ecdc6" transparent opacity={.16} depthWrite={false}/>
+          </mesh>
+          <mesh scale={1.45}><sphereGeometry args={[radius,16,16]}/><meshBasicMaterial color="#d6ece0" transparent opacity={.16} side={THREE.BackSide}/></mesh>
         </>}
         {selected && <mesh scale={1.3}>
           <sphereGeometry args={[radius, 24, 24]} />
