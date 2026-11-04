@@ -234,7 +234,7 @@ function Planet({ item, index, selected, onSelect, profile }: {
         {isJupiter && <mesh position={[radius * .94, radius * .11, 0]} scale={[.085, .035, .018]}>
           <sphereGeometry args={[radius, 16, 12]} /><meshBasicMaterial color="#a95742" transparent opacity={.78} />
         </mesh>}
-        {isSun && <>        {isSun && <>
+        {isSun && <>
           <mesh scale={1.65}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#ffbf69" transparent opacity={.065} side={THREE.BackSide} /></mesh>
           <mesh scale={2.2}><sphereGeometry args={[radius, 24, 24]} /><meshBasicMaterial color="#e89b51" transparent opacity={.022} side={THREE.BackSide} /></mesh>
         </>}

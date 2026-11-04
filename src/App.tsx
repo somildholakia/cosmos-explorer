@@ -92,7 +92,6 @@ export default function App() {
         </button>
       </div>
     </section>
-    <section className="workspace" id="explore">    </header>
     <section className="workspace" id="explore">
       <aside className="left-rail">
         <div className="rail-kicker">FIELD NOTES <span>01 — 08</span></div>
