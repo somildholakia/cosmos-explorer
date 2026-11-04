@@ -62,7 +62,7 @@ export default function App() {
         <div className="canvas-wrap"><Suspense fallback={<div className="scene-loading">Preparing the starfield…</div>}><Universe items={objects} selected={selected} onSelect={choose}/></Suspense><div className="canvas-vignette"/><div className="canvas-label top-left"><span className="label-line"/> MILKY WAY · LOCAL VIEW</div><div className="canvas-label bottom-left"><span className="pulse-dot"/> GRAVITY FIELD ACTIVE</div><div className="canvas-hint"><span>DRAG TO ROTATE</span><span>SCROLL TO ZOOM</span></div>
           {!focusMode && <div className="object-tooltip"><span className="tooltip-index">SELECTED OBJECT</span><b>{selected.name}</b><small>{formatKind(selected.kind)} · {selected.distance}</small></div>}
         </div>
-        <div className="stage-footer"><span>01 <i/> 14 CELESTIAL OBJECTS</span><span>NOT TO SCALE · CONCEPTUAL SPATIAL MODEL</span><span>DATA: NASA / ESA REFERENCES</span></div>
+        <div className="stage-footer"><span>01 <i/> 14 CELESTIAL OBJECTS</span><span>NOT TO SCALE · CONCEPTUAL SPATIAL MODEL</span><span>DATA: CURATED SCIENCE SUMMARIES</span></div>
       </section>
       {showInfo && <aside className="info-panel">
         <div className="panel-top"><span className="eyebrow">CELESTIAL DOSSIER <span className="gold">✳</span></span><button className="icon-button" onClick={()=>setShowInfo(false)} aria-label="Close information"><X size={17}/></button></div>
@@ -72,7 +72,7 @@ export default function App() {
         <div className="about-section"><div className="section-row"><span>OVERVIEW</span><Info size={14}/></div><p>{selected.description}</p></div>
         <div className="fact-card"><div className="fact-heading"><Sparkles size={14}/> DID YOU KNOW?</div><p>{selected.fact}</p></div>
         <button className="more-button" onClick={()=>setShowCatalogue(true)}>Explore more objects <ChevronRight size={16}/></button>
-        <div className="panel-foot"><span>OBJECT ID: {selected.id.toUpperCase()}</span><span>VERIFIED FACTS · 2026</span></div>
+        <div className="panel-foot"><span>OBJECT ID: {selected.id.toUpperCase()}</span><span>EDUCATIONAL REFERENCE NOTES</span></div>
       </aside>}
       {!showInfo && <button className="reopen-info" onClick={()=>setShowInfo(true)}><Info size={16}/> Object details</button>}
     </section>

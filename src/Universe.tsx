@@ -164,8 +164,24 @@ function Planet({ item, index, selected, onSelect }: {
   return <>
     {item.kind === 'Planet' && item.orbit > 0 && <OrbitTrack radius={item.orbit * .66} />}
     <group ref={group} position={[item.orbit * .66, 0, 0]}>
-      {item.kind === 'Galaxy' ? <GalaxyStructure color={item.color} /> :
-       item.kind === 'Nebula' ? <NebulaStructure color={item.color} /> : <>
+      {item.kind === 'Galaxy' ? <>
+        <GalaxyStructure color={item.color} />
+        <mesh onClick={e => { e.stopPropagation(); onSelect(item) }}
+          onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
+          onPointerOut={() => { document.body.style.cursor = 'auto' }}>
+          <sphereGeometry args={[Math.max(radius * 1.25, .68), 28, 28]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </> :
+       item.kind === 'Nebula' ? <>
+        <NebulaStructure color={item.color} />
+        <mesh onClick={e => { e.stopPropagation(); onSelect(item) }}
+          onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
+          onPointerOut={() => { document.body.style.cursor = 'auto' }}>
+          <sphereGeometry args={[Math.max(radius * 1.2, .62), 28, 28]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </> : <>
         {textureUrls[item.id] ? (
           <Suspense fallback={<mesh material={material} onClick={e => { e.stopPropagation(); onSelect(item) }}>
             <sphereGeometry args={[radius, 48, 48]} />
