@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Crosshair, RotateCcw, Sparkles, Menu, Shuffle, Bookmark } from 'lucide-react'
+import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Crosshair, RotateCcw, Sparkles, Menu, Shuffle, Bookmark, Globe2, Layers3, Telescope } from 'lucide-react'
 const Universe = lazy(() => import('./Universe'))
-import { objects, type SpaceObject } from './data'
+import { objects, objectProfiles, type SpaceObject } from './data'
 
 const filters = ['All', 'Planet', 'Star', 'Moon', 'Galaxy', 'Nebula', 'Black hole', 'Saved'] as const
 const formatKind = (kind: string) => kind.toUpperCase()
@@ -31,6 +31,9 @@ export default function App() {
     ? current.filter(id => id !== selected.id)
     : [...current, selected.id])
   const isSaved = savedIds.includes(selected.id)
+  const selectedProfile = objectProfiles[selected.id]
+  const planetCount = objects.filter(item => item.kind === 'Planet').length
+  const deepSpaceCount = objects.filter(item => ['Galaxy', 'Nebula', 'Black hole'].includes(item.kind)).length
 
   useEffect(() => {
     try { localStorage.setItem('cosmos:saved-worlds', JSON.stringify(savedIds)) } catch { /* Storage can be unavailable in private browsing. */ }
@@ -68,6 +71,28 @@ export default function App() {
       </nav>
       <div className="top-actions"><span className="live-indicator"><i/> LIVE SIMULATION</span><button className="icon-button mobile-menu" onClick={()=>setShowMobileMenu(!showMobileMenu)} aria-label="Toggle menu"><Menu size={18}/></button><button className="avatar-button" title="Explorer profile">S</button></div>
     </header>
+    <section className="overview-strip" aria-label="Observatory overview">
+      <div className="overview-intro">
+        <span className="eyebrow">MISSION CONTROL <i> / </i> YOUR OBSERVATORY</span>
+        <h2>A universe of <em>possibilities.</em></h2>
+        <p>One view. Countless stories. Start with a world that sparks your curiosity.</p>
+      </div>
+      <div className="overview-metrics">
+        <button className="overview-metric metric-violet" onClick={()=>{setActiveFilter('All');setQuery('');setShowCatalogue(true)}}>
+          <span className="metric-icon"><Globe2 size={16}/></span><b>{objects.length}</b><span>OBJECTS MAPPED</span><small>Across the cosmos</small>
+        </button>
+        <button className="overview-metric metric-cyan" onClick={()=>{setActiveFilter('Planet');setQuery('');setShowCatalogue(true)}}>
+          <span className="metric-icon"><Orbit size={16}/></span><b>{planetCount}</b><span>PLANETS</span><small>Rocky &amp; giant worlds</small>
+        </button>
+        <button className="overview-metric metric-coral" onClick={()=>{setActiveFilter('All');setQuery('');setShowCatalogue(true)}}>
+          <span className="metric-icon"><Telescope size={16}/></span><b>{deepSpaceCount}</b><span>DEEP SPACE</span><small>Beyond our solar system</small>
+        </button>
+        <button className="overview-metric metric-gold" onClick={()=>{setActiveFilter('Saved');setQuery('');setShowCatalogue(true)}}>
+          <span className="metric-icon"><Bookmark size={16}/></span><b>{savedIds.length}</b><span>YOUR SAVED WORLDS</span><small>Personal collection</small>
+        </button>
+      </div>
+    </section>
+    <section className="workspace" id="explore">    </header>
     <section className="workspace" id="explore">
       <aside className="left-rail">
         <div className="rail-kicker">FIELD NOTES <span>01 — 08</span></div>
@@ -87,10 +112,29 @@ export default function App() {
       </section>
       {showInfo && <aside className="info-panel">
         <div className="panel-top"><span className="eyebrow">CELESTIAL DOSSIER <span className="gold">✳</span></span><div className="panel-actions"><button className={isSaved?'icon-button saved-toggle is-saved':'icon-button saved-toggle'} onClick={toggleSaved} aria-label={isSaved?'Remove from saved worlds':'Save this world'} aria-pressed={isSaved} title={isSaved?'Saved to your collection':'Save this world'}><Bookmark size={16} fill={isSaved?'currentColor':'none'}/></button><button className="icon-button" onClick={()=>setShowInfo(false)} aria-label="Close information"><X size={17}/></button></div></div>
-        <div className="object-art" style={{'--planet-color':selected.color} as React.CSSProperties}><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-planet"/><div className="art-glow"/></div>
+        <div className={`object-art object-art-${selected.id}`} style={{'--planet-color':selected.color} as React.CSSProperties}><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-planet"/><div className="art-glow"/></div>
         <div className="object-title"><span className="object-type">{selected.kind.toUpperCase()} <i/> {selected.id.toUpperCase()}</span><h1>{selected.name}</h1><p>{selected.subtitle}</p></div>
         <div className="stat-grid"><div><span>DISTANCE</span><b>{selected.distance}</b></div><div><span>DIAMETER</span><b>{selected.diameter}</b></div><div className="wide-stat"><span>TEMPERATURE</span><b>{selected.temperature}</b></div></div>
+        <div className="world-classification"><span>{selectedProfile.classification}</span><small>{selectedProfile.companions}</small></div>
+        <div className="world-profile-grid">
+          <div className="profile-tile tile-atmosphere"><span>ATMOSPHERE</span><b>{selectedProfile.atmosphere}</b></div>
+          <div className="profile-tile tile-composition"><span>COMPOSITION</span><b>{selectedProfile.composition}</b></div>
+          <div className="profile-tile tile-rotation"><span>ROTATION</span><b>{selectedProfile.rotation}</b></div>
+          <div className="profile-tile tile-gravity"><span>GRAVITY</span><b>{selectedProfile.gravity}</b></div>
+        </div>
         <div className="about-section"><div className="section-row"><span>OVERVIEW</span><Info size={14}/></div><p>{selected.description}</p></div>
+        <section className="structure-card">
+          <div className="structure-heading"><div><span className="eyebrow">ANATOMY / COMPOSITION</span><b>{selectedProfile.structureTitle}</b></div><Layers3 size={17}/></div>
+          <div className="structure-stack" aria-label={selectedProfile.structureTitle}>
+            {selectedProfile.structure.map((layer,index)=><div className="structure-layer" key={layer.label}>
+              <span className="layer-swatch" style={{background:layer.color}}/>
+              <span className="layer-copy"><b>{layer.label}</b><small>{layer.detail}</small></span>
+              <span className="layer-index">{String(index+1).padStart(2,'0')}</span>
+            </div>)}
+          </div>
+          <div className="profile-extra"><span>ORBIT / CYCLE</span><b>{selectedProfile.year}</b></div>
+          <a className="profile-source" href={selectedProfile.sourceUrl} target="_blank" rel="noreferrer">REFERENCE: {selectedProfile.sourceLabel} ↗</a>
+        </section>        <div className="about-section"><div className="section-row"><span>OVERVIEW</span><Info size={14}/></div><p>{selected.description}</p></div>
         <div className="fact-card"><div className="fact-heading"><Sparkles size={14}/> DID YOU KNOW?</div><p>{selected.fact}</p></div>
         <button className="more-button" onClick={()=>setShowCatalogue(true)}>Explore more objects <ChevronRight size={16}/></button>
         <div className="panel-foot"><span>OBJECT ID: {selected.id.toUpperCase()}</span><span>EDUCATIONAL REFERENCE NOTES</span></div>

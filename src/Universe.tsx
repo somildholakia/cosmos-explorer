@@ -179,6 +179,9 @@ function Planet({ item, index, selected, onSelect, profile }: {
   const isSun = item.id === 'sun'
   const isEarth = item.id === 'earth'
   const isSaturn = item.id === 'saturn'
+  const isUranus = item.id === 'uranus'
+  const isNeptune = item.id === 'neptune'
+  const isJupiter = item.id === 'jupiter'
   const isBlackHole = item.kind === 'Black hole'
   const radius = item.size * .64
   const texture = useDisposableTexture(selected ? textureUrls[item.id] : undefined)
@@ -191,7 +194,7 @@ function Planet({ item, index, selected, onSelect, profile }: {
 
   return <>
     {item.kind === 'Planet' && item.orbit > 0 && <OrbitTrack radius={item.orbit * .66} />}
-    <group ref={group} position={[item.orbit * .66, 0, 0]}>
+    <group ref={group} position={[item.orbit * .66, 0, 0]} rotation={[0, 0, isUranus ? 1.71 : isSaturn ? .47 : 0]}>
       {item.kind === 'Galaxy' ? <>
         <GalaxyStructure color={item.color} pointsCount={profile.galaxyPoints} />
         <mesh onClick={e => { e.stopPropagation(); onSelect(item) }}
@@ -224,14 +227,27 @@ function Planet({ item, index, selected, onSelect, profile }: {
             emissiveIntensity={isSun ? .8 : selected ? .1 : .012}
           />
         </mesh>
-        {isSun && <>
+        {!isSun && !isBlackHole && <mesh scale={item.id === 'venus' ? 1.1 : 1.055}>
+          <sphereGeometry args={[radius, profile.lowPower ? 18 : 32, profile.lowPower ? 18 : 32]} />
+          <meshBasicMaterial color={item.color} transparent opacity={profile.lowPower ? (item.id === 'venus' ? .055 : .025) : (item.id === 'venus' ? .1 : .045)} side={THREE.BackSide} depthWrite={false} />
+        </mesh>}
+        {isJupiter && <mesh position={[radius * .94, radius * .11, 0]} scale={[.085, .035, .018]}>
+          <sphereGeometry args={[radius, 16, 12]} /><meshBasicMaterial color="#a95742" transparent opacity={.78} />
+        </mesh>}
+        {isSun && <>        {isSun && <>
           <mesh scale={1.65}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#ffbf69" transparent opacity={.065} side={THREE.BackSide} /></mesh>
           <mesh scale={2.2}><sphereGeometry args={[radius, 24, 24]} /><meshBasicMaterial color="#e89b51" transparent opacity={.022} side={THREE.BackSide} /></mesh>
         </>}
         {isEarth && selected && <><mesh scale={1.12}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#6ebbe9" transparent opacity={.1} side={THREE.BackSide} /></mesh><EarthCloudLayer radius={radius} /></>}
-        {isSaturn && <mesh rotation={[Math.PI / 2.25, 0, 0]}>
-          <ringGeometry args={[radius * 1.18, radius * 2.05, profile.lowPower ? 56 : 96]} />
-          <meshStandardMaterial color="#d7c29b" side={THREE.DoubleSide} transparent opacity={.76} roughness={1} />
+        {isSaturn && <>
+          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.12, radius * 1.34, profile.lowPower ? 40 : 72]} /><meshStandardMaterial color="#9e896e" side={THREE.DoubleSide} transparent opacity={.62} roughness={1} /></mesh>
+          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.38, radius * 1.78, profile.lowPower ? 48 : 88]} /><meshStandardMaterial color="#e4d0a5" side={THREE.DoubleSide} transparent opacity={.86} roughness={1} /></mesh>
+          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.82, radius * 2.1, profile.lowPower ? 40 : 72]} /><meshStandardMaterial color="#b9a27d" side={THREE.DoubleSide} transparent opacity={.5} roughness={1} /></mesh>
+          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.34, radius * 1.38, profile.lowPower ? 32 : 64]} /><meshBasicMaterial color="#171921" side={THREE.DoubleSide} transparent opacity={.88} /></mesh>
+        </>}
+        {(isUranus || isNeptune) && <mesh rotation={[Math.PI / 2.1, 0, 0]}>
+          <ringGeometry args={[radius * 1.42, radius * 1.62, profile.lowPower ? 40 : 76]} />
+          <meshBasicMaterial color={isUranus ? '#809a9d' : '#7588b5'} side={THREE.DoubleSide} transparent opacity={.2} />
         </mesh>}
         {isBlackHole && <>
           <mesh rotation={[Math.PI / 2.45, 0, 0]} scale={[1.75, .52, 1]}>
