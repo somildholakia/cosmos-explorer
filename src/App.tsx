@@ -131,7 +131,7 @@ export default function App() {
             {selectedProfile.mission && <div className="science-wide"><span>MISSION / OBSERVATIONS</span><b>{selectedProfile.mission}</b></div>}
           </div>
           {selectedProfile.highlights?.length ? <div className="highlight-list">{selectedProfile.highlights.map((highlight,index)=><span key={highlight}><i>{String(index+1).padStart(2,'0')}</i>{highlight}</span>)}</div> : null}
-        </section>
+        </section>}
         <div className="about-section"><div className="section-row"><span>OVERVIEW</span><Info size={14}/></div><p>{selected.description}</p></div>
         <section className="structure-card">
           <div className="structure-heading"><div><span className="eyebrow">ANATOMY / COMPOSITION</span><b>{selectedProfile.structureTitle}</b></div><Layers3 size={17}/></div>
