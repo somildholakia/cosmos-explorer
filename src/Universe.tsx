@@ -29,7 +29,6 @@ const textureUrls: Record<string, string> = {
   callisto: 'https://space.jpl.nasa.gov/tmaps/pix/jup4vss2.jpg',
   enceladus: 'https://space.jpl.nasa.gov/tmaps/pix/sat2vss2.jpg'
 }
-}
 
 // Ultra maps load only for the focused body on desktop-class devices.
 const ultraTextureUrls: Record<string,string> = {
