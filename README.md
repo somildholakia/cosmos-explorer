@@ -35,3 +35,7 @@ This release is an educational, navigable concept model—not a precision epheme
 2. Better object-specific surface maps and physically based materials.
 3. Guided missions, constellation navigation and deep-space discovery routes.
 4. Mobile touch controls, performance profiling and accessibility testing.
+
+
+## Asset credits
+See [CREDITS.md](./CREDITS.md) for the source and CC BY 4.0 attribution for planetary surface textures.

@@ -1,8 +1,70 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { OrbitControls, Stars, Sparkles } from '@react-three/drei'
 import * as THREE from 'three'
 import type { SpaceObject } from './data'
+
+
+const textureUrls: Record<string, string> = {
+  sun: 'https://play.solarsystemscope.com/textures/download/2k_sun.jpg',
+  mercury: 'https://play.solarsystemscope.com/textures/download/2k_mercury.jpg',
+  venus: 'https://play.solarsystemscope.com/textures/download/2k_venus_surface.jpg',
+  earth: 'https://play.solarsystemscope.com/textures/download/2k_earth_daymap.jpg',
+  moon: 'https://play.solarsystemscope.com/textures/download/2k_moon.jpg',
+  mars: 'https://play.solarsystemscope.com/textures/download/2k_mars.jpg',
+  jupiter: 'https://play.solarsystemscope.com/textures/download/2k_jupiter.jpg',
+  saturn: 'https://play.solarsystemscope.com/textures/download/2k_saturn.jpg',
+  uranus: 'https://play.solarsystemscope.com/textures/download/2k_uranus.jpg',
+  neptune: 'https://play.solarsystemscope.com/textures/download/2k_neptune.jpg'
+}
+
+function TexturedSphere({ item, radius, selected, onSelect }: {
+  item: SpaceObject
+  radius: number
+  selected: boolean
+  onSelect: (item: SpaceObject) => void
+}) {
+  const texture = useLoader(THREE.TextureLoader, textureUrls[item.id])
+  useMemo(() => {
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = 8
+    return texture
+  }, [texture])
+  const isSun = item.id === 'sun'
+  const rotation = useRef<THREE.Mesh>(null!)
+  useFrame(() => {
+    if (rotation.current) rotation.current.rotation.y += isSun ? .0008 : .0019
+  })
+  return <mesh ref={rotation}
+    onClick={e => { e.stopPropagation(); onSelect(item) }}
+    onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
+    onPointerOut={() => { document.body.style.cursor = 'auto' }}>
+    <sphereGeometry args={[radius, 64, 64]} />
+    <meshStandardMaterial
+      map={texture}
+      roughness={isSun ? .58 : .92}
+      metalness={0}
+      emissive={isSun ? '#ffffff' : selected ? item.color : '#000000'}
+      emissiveMap={isSun ? texture : undefined}
+      emissiveIntensity={isSun ? 1.05 : selected ? .1 : 0}
+    />
+  </mesh>
+}
+
+function EarthCloudLayer({ radius }: { radius: number }) {
+  const clouds = useLoader(THREE.TextureLoader, 'https://play.solarsystemscope.com/textures/download/2k_earth_clouds.jpg')
+  useMemo(() => {
+    clouds.colorSpace = THREE.SRGBColorSpace
+    clouds.anisotropy = 8
+    return clouds
+  }, [clouds])
+  const ref = useRef<THREE.Mesh>(null!)
+  useFrame(() => { if (ref.current) ref.current.rotation.y += .00035 })
+  return <mesh ref={ref} scale={1.018}>
+    <sphereGeometry args={[radius, 64, 64]} />
+    <meshStandardMaterial color="#ffffff" alphaMap={clouds} transparent opacity={.38} depthWrite={false} roughness={1} />
+  </mesh>
+}
 
 function positionFor(item: SpaceObject, time: number, index: number) {
   if (item.id === 'sun') return new THREE.Vector3(0, 0, 0)
@@ -104,17 +166,25 @@ function Planet({ item, index, selected, onSelect }: {
     <group ref={group} position={[item.orbit * .66, 0, 0]}>
       {item.kind === 'Galaxy' ? <GalaxyStructure color={item.color} /> :
        item.kind === 'Nebula' ? <NebulaStructure color={item.color} /> : <>
-        <mesh ref={mesh} material={material}
-          onClick={e => { e.stopPropagation(); onSelect(item) }}
-          onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
-          onPointerOut={() => { document.body.style.cursor = 'auto' }}>
-          <sphereGeometry args={[radius, 64, 64]} />
-        </mesh>
+        {textureUrls[item.id] ? (
+          <Suspense fallback={<mesh material={material} onClick={e => { e.stopPropagation(); onSelect(item) }}>
+            <sphereGeometry args={[radius, 48, 48]} />
+          </mesh>}>
+            <TexturedSphere item={item} radius={radius} selected={selected} onSelect={onSelect} />
+          </Suspense>
+        ) : (
+          <mesh ref={mesh} material={material}
+            onClick={e => { e.stopPropagation(); onSelect(item) }}
+            onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
+            onPointerOut={() => { document.body.style.cursor = 'auto' }}>
+            <sphereGeometry args={[radius, 64, 64]} />
+          </mesh>
+        )}
         {isSun && <>
           <mesh scale={1.65}><sphereGeometry args={[radius, 40, 40]} /><meshBasicMaterial color="#ffbf69" transparent opacity={.075} side={THREE.BackSide} /></mesh>
           <mesh scale={2.2}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#e89b51" transparent opacity={.025} side={THREE.BackSide} /></mesh>
         </>}
-        {isEarth && <mesh scale={1.12}><sphereGeometry args={[radius, 48, 48]} /><meshBasicMaterial color="#6ebbe9" transparent opacity={.13} side={THREE.BackSide} /></mesh>}
+        {isEarth && <><mesh scale={1.12}><sphereGeometry args={[radius, 48, 48]} /><meshBasicMaterial color="#6ebbe9" transparent opacity={.13} side={THREE.BackSide} /></mesh><Suspense fallback={null}><EarthCloudLayer radius={radius} /></Suspense></>}
         {isSaturn && <mesh rotation={[Math.PI / 2.25, 0, 0]}>
           <ringGeometry args={[radius * 1.18, radius * 2.05, 128]} />
           <meshStandardMaterial color="#d7c29b" side={THREE.DoubleSide} transparent opacity={.76} roughness={1} />
@@ -163,7 +233,7 @@ function Scene({ items, selected, onSelect }: {
     <hemisphereLight color="#b8c9e8" groundColor="#080a10" intensity={.2} />
     <Stars radius={110} depth={70} count={5200} factor={3.1} saturation={.26} fade speed={.22} />
     <Sparkles count={145} scale={54} size={1.7} speed={.16} opacity={.35} color="#9bb8e9" />
-    {items.map((item, index) => <Planet key={item.id} item={item} index={index} selected={selected.id === item.id} onSelect={onSelect} />)}
+    {items.map((item, index) => <Suspense key={item.id} fallback={null}><Planet item={item} index={index} selected={selected.id === item.id} onSelect={onSelect} /></Suspense>)}
     <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={.06} minDistance={2.8} maxDistance={70} enablePan rotateSpeed={.58} zoomSpeed={.78} />
   </>
 }
