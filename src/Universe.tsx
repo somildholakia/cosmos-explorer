@@ -132,7 +132,9 @@ function OrbitTrack({item}:{item:SpaceObject}){
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(points,3));return g
  },[el])
  useEffect(()=>()=>geometry.dispose(),[geometry])
- return <line geometry={geometry}><lineBasicMaterial color="#c98b68" transparent opacity={.34} depthWrite={false}/></line>
+ const orbitLine=useMemo(()=>new THREE.Line(geometry,new THREE.LineBasicMaterial({color:'#c98b68',transparent:true,opacity:.34,depthWrite:false})),[geometry])
+ useEffect(()=>()=>orbitLine.material.dispose(),[orbitLine])
+ return <primitive object={orbitLine}/>
 }
 
 function GalaxyStructure({ color, pointsCount }: { color: string; pointsCount: number }) {
