@@ -16,3 +16,9 @@
   .more-button{margin-top:10px;height:34px}
   .panel-foot{font-size:6px;padding-top:10px}
 }
+
+.scene-fallback-inner{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:310px}
+.scene-fallback-inner strong{font:500 20px/1.25 'Space Grotesk';color:#e8eaf0;text-align:center}
+.scene-fallback-inner p{margin:0;color:#8f9bad;font-size:11px;line-height:1.7;text-align:center}
+.scene-retry{margin-top:4px;min-height:38px;padding:0 16px;border:1px solid rgba(233,188,124,.38);background:rgba(233,188,124,.08);color:#e8c99e;font-size:10px;cursor:pointer}
+.scene-retry:hover{background:rgba(233,188,124,.15)}

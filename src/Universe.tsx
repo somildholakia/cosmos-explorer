@@ -302,7 +302,25 @@ export default function Universe({ items, selected, onSelect, onReady }: {
   onReady?: () => void
 }) {
   const profile = useMemo(() => getDeviceProfile(), [])
+  const [contextLost, setContextLost] = useState(false)
+  const [canvasKey, setCanvasKey] = useState(0)
+
+  if (contextLost) {
+    return <div className="scene-fallback" role="alert">
+      <div className="scene-fallback-inner">
+        <span className="eyebrow">3D VIEW PAUSED</span>
+        <strong>The graphics session was interrupted.</strong>
+        <p>Your selected object and catalogue are still safe. Restart the 3D scene to continue exploring.</p>
+        <button className="scene-retry" onClick={() => {
+          setContextLost(false)
+          setCanvasKey(value => value + 1)
+        }}>Restart 3D view</button>
+      </div>
+    </div>
+  }
+
   return <Canvas
+    key={canvasKey}
     camera={{ position: [0, 11, 23], fov: 45, near: .1, far: 180 }}
     dpr={profile.pixelRatio}
     gl={{
@@ -315,8 +333,9 @@ export default function Universe({ items, selected, onSelect, onReady }: {
     onCreated={({ gl }) => {
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault()
+        setContextLost(true)
         onReady?.()
-      })
+      }, { once: true })
       onReady?.()
     }}
   >
