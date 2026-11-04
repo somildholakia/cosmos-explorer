@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Stars, Sparkles } from '@react-three/drei'
 import * as THREE from 'three'
-import type { SpaceObject } from './data'
+import { lunarOrbit, orbitalElements, type SpaceObject } from './data'
 
 const textureUrls: Record<string, string> = {
   sun: 'https://play.solarsystemscope.com/textures/download/2k_sun.jpg',
@@ -87,28 +87,52 @@ function useDisposableTexture(url?: string) {
   return texture
 }
 
-function positionFor(item: SpaceObject, time: number, index: number) {
-  if (item.id === 'sun') return new THREE.Vector3(0, 0, 0)
-  if (item.id === 'moon') {
-    const earthAngle = time * (.86 * .075) + 3 * .7
-    const moonAngle = time * item.speed * .075 + index * .7
-    const earthX = Math.cos(earthAngle) * 4.25 * .66
-    const earthZ = Math.sin(earthAngle) * 4.25 * .66 * .68
-    return new THREE.Vector3(earthX + Math.cos(moonAngle) * .74, .12, earthZ + Math.sin(moonAngle) * .74)
-  }
-  const angle = time * item.speed * .075 + index * .7
-  return new THREE.Vector3(
-    Math.cos(angle) * item.orbit * .66,
-    item.kind === 'Galaxy' ? 1.4 : item.kind === 'Nebula' ? -.7 : 0,
-    Math.sin(angle) * item.orbit * .66 * .68
-  )
+const AU_SCALE=2.05
+const deepSpacePositions:Record<string,[number,number,number]>={sirius:[17,3.6,-13],andromeda:[-17,8,-18],orion:[12,-6,-18],m87:[-19,-3.5,15]}
+const radians=(d:number)=>d*Math.PI/180
+const displayOrbitRadius=(a:number)=>AU_SCALE*Math.pow(a,.52)
+function solveEccentricAnomaly(M:number,e:number){
+ let E=M
+ for(let i=0;i<7;i++){const correction=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=correction;if(Math.abs(correction)<1e-8)break}
+ return E
 }
-
-function OrbitTrack({ radius }: { radius: number }) {
-  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.035, 0]}>
-    <ringGeometry args={[radius - .009, radius + .009, 112]} />
-    <meshBasicMaterial color="#8292ad" transparent opacity={.18} side={THREE.DoubleSide} />
-  </mesh>
+function orbitalPlanePosition(a:number,e:number,M:number){
+ const E=solveEccentricAnomaly(M,e)
+ return new THREE.Vector2(a*(Math.cos(E)-e),a*Math.sqrt(1-e*e)*Math.sin(E))
+}
+function orientOrbitPoint(p:THREE.Vector2,iDeg:number,nodeDeg:number,periDeg:number){
+ const w=radians(periDeg),O=radians(nodeDeg),i=radians(iDeg)
+ const xp=p.x*Math.cos(w)-p.y*Math.sin(w),yp=p.x*Math.sin(w)+p.y*Math.cos(w)
+ return new THREE.Vector3(xp*Math.cos(O)-yp*Math.cos(i)*Math.sin(O),yp*Math.sin(i),xp*Math.sin(O)+yp*Math.cos(i)*Math.cos(O))
+}
+function planetPosition(id:string,days:number){
+ const el=orbitalElements[id];if(!el)return new THREE.Vector3()
+ const M=radians(el.meanAnomalyAtEpochDeg)+Math.PI*2*days/el.periodDays
+ return orientOrbitPoint(orbitalPlanePosition(displayOrbitRadius(el.semiMajorAxisAU),el.eccentricity,M),el.inclinationDeg,el.ascendingNodeDeg,el.argumentOfPerihelionDeg)
+}
+function positionFor(item:SpaceObject,days:number){
+ if(item.id==='sun')return new THREE.Vector3()
+ if(item.id==='moon'){
+   const earth=planetPosition('earth',days),M=radians(lunarOrbit.meanAnomalyAtEpochDeg)+Math.PI*2*days/lunarOrbit.periodDays
+   return earth.add(orientOrbitPoint(orbitalPlanePosition(lunarOrbit.semiMajorAxisScene,lunarOrbit.eccentricity,M),lunarOrbit.inclinationDeg,0,0))
+ }
+ if(item.kind!=='Planet')return new THREE.Vector3(...(deepSpacePositions[item.id]??[0,0,0]))
+ return planetPosition(item.id,days)
+}
+function OrbitTrack({item}:{item:SpaceObject}){
+ const el=orbitalElements[item.id]
+ const geometry=useMemo(()=>{
+  if(!el)return new THREE.BufferGeometry()
+  const points:number[]=[],a=displayOrbitRadius(el.semiMajorAxisAU)
+  for(let step=0;step<=240;step++){
+    const M=step/240*Math.PI*2
+    const p=orientOrbitPoint(orbitalPlanePosition(a,el.eccentricity,M),el.inclinationDeg,el.ascendingNodeDeg,el.argumentOfPerihelionDeg)
+    points.push(p.x,p.y,p.z)
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(points,3));return g
+ },[el])
+ useEffect(()=>()=>geometry.dispose(),[geometry])
+ return <line geometry={geometry}><lineBasicMaterial color="#c98b68" transparent opacity={.34} depthWrite={false}/></line>
 }
 
 function GalaxyStructure({ color, pointsCount }: { color: string; pointsCount: number }) {
@@ -158,7 +182,7 @@ function NebulaStructure({ color, simple }: { color: string; simple: boolean }) 
 function EarthCloudLayer({ radius }: { radius: number }) {
   const clouds = useDisposableTexture('https://play.solarsystemscope.com/textures/download/2k_earth_clouds.jpg')
   const ref = useRef<THREE.Mesh>(null!)
-  useFrame(() => { if (ref.current) ref.current.rotation.y += .0003 })
+  useFrame((_,delta) => { if (ref.current) ref.current.rotation.y += delta*.006 })
   if (!clouds) return null
 
   return <mesh ref={ref} scale={1.018}>
@@ -167,12 +191,13 @@ function EarthCloudLayer({ radius }: { radius: number }) {
   </mesh>
 }
 
-function Planet({ item, index, selected, onSelect, profile }: {
+function Planet({ item, selected, onSelect, profile, simulationDays, simulationRunning }: {
   item: SpaceObject
-  index: number
   selected: boolean
   onSelect: (item: SpaceObject) => void
   profile: DeviceProfile
+  simulationDays: { current: number }
+  simulationRunning: boolean
 }) {
   const mesh = useRef<THREE.Mesh>(null!)
   const group = useRef<THREE.Group>(null!)
@@ -183,18 +208,22 @@ function Planet({ item, index, selected, onSelect, profile }: {
   const isNeptune = item.id === 'neptune'
   const isJupiter = item.id === 'jupiter'
   const isBlackHole = item.kind === 'Black hole'
+  const orbit = orbitalElements[item.id]
   const radius = item.size * .64
   const texture = useDisposableTexture(selected ? textureUrls[item.id] : undefined)
 
-  useFrame(({ clock }) => {
+  useFrame((_,delta) => {
     if (!group.current) return
-    group.current.position.copy(positionFor(item, clock.elapsedTime, index))
-    if (mesh.current && !isBlackHole) mesh.current.rotation.y += isSun ? .0008 : .0018
+    group.current.position.copy(positionFor(item,simulationDays.current))
+    if (simulationRunning && mesh.current && !isBlackHole && item.id!=='moon') {
+      const spinPeriod=orbit?.visualSpinSeconds ?? (isSun?30:20)
+      mesh.current.rotation.y += delta*(Math.PI*2/spinPeriod)*(orbit?.retrograde?-1:1)
+    }
   })
 
   return <>
-    {item.kind === 'Planet' && item.orbit > 0 && <OrbitTrack radius={item.orbit * .66} />}
-    <group ref={group} position={[item.orbit * .66, 0, 0]} rotation={[0, 0, isUranus ? 1.71 : isSaturn ? .47 : 0]}>
+    {item.kind === 'Planet' && <OrbitTrack item={item} />}
+    <group ref={group} rotation={[radians(orbit?.axialTiltDeg ?? (isSun?7.25:0)),0,0]}>
       {item.kind === 'Galaxy' ? <>
         <GalaxyStructure color={item.color} pointsCount={profile.galaxyPoints} />
         <mesh onClick={e => { e.stopPropagation(); onSelect(item) }}
@@ -268,45 +297,52 @@ function Planet({ item, index, selected, onSelect, profile }: {
   </>
 }
 
-function Scene({ items, selected, onSelect, profile }: {
+function Scene({ items, selected, onSelect, profile, simulationRunning, simulationSpeed }: {
   items: SpaceObject[]
   selected: SpaceObject
   onSelect: (item: SpaceObject) => void
   profile: DeviceProfile
+  simulationRunning: boolean
+  simulationSpeed: number
 }) {
   const controls = useRef<any>(null)
   const { camera } = useThree()
   const focusOffset = useRef(new THREE.Vector3())
   const shouldFocus = useRef(true)
+  const simulationDays = useRef(0)
+  const lastFollowPoint = useRef(new THREE.Vector3())
 
   useEffect(() => {
+    lastFollowPoint.current.copy(positionFor(selected,simulationDays.current))
     const distance = Math.max(4.6, selected.size * 7 + 2.8)
     focusOffset.current.set(distance * .42, distance * .42, distance)
     shouldFocus.current = true
   }, [selected.id, selected.size])
 
-  useFrame(({ clock }) => {
-    if (!shouldFocus.current || !controls.current) return
-    const index = Math.max(0, items.findIndex(item => item.id === selected.id))
-    const point = positionFor(selected, clock.elapsedTime, index)
-    const destination = point.clone().add(focusOffset.current)
-    controls.current.target.lerp(point, .09)
-    camera.position.lerp(destination, .09)
+  useFrame((_,delta) => {
+    if(simulationRunning)simulationDays.current+=delta*(365.256/90)*simulationSpeed
+    if(!controls.current)return
+    const point=positionFor(selected,simulationDays.current)
+    const shift=point.clone().sub(lastFollowPoint.current)
+    if(!shouldFocus.current){controls.current.target.add(shift);camera.position.add(shift)}
+    else {controls.current.target.lerp(point,.09);camera.position.lerp(point.clone().add(focusOffset.current),.09)}
+    lastFollowPoint.current.copy(point)
     controls.current.update()
-    if (camera.position.distanceTo(destination) < .035 && controls.current.target.distanceTo(point) < .035) {
-      shouldFocus.current = false
+    if(shouldFocus.current){
+      const destination=point.clone().add(focusOffset.current)
+      if(camera.position.distanceTo(destination)<.035&&controls.current.target.distanceTo(point)<.035)shouldFocus.current=false
     }
   })
 
   return <>
-    <color attach="background" args={['#080b12']} />
-    <fog attach="fog" args={['#080b12', 27, 78]} />
+    <color attach="background" args={['#120d16']} />
+    <fog attach="fog" args={['#120d16', 33, 92]} />
     <ambientLight intensity={.4} />
     <pointLight position={[0, 0, 0]} intensity={90} color="#ffd08a" distance={42} decay={2} />
-    <hemisphereLight color="#b8c9e8" groundColor="#080a10" intensity={.18} />
-    <Stars radius={100} depth={64} count={profile.starCount} factor={profile.lowPower ? 2.5 : 3.1} saturation={.26} fade speed={profile.lowPower ? .1 : .2} />
-    <Sparkles count={profile.sparkleCount} scale={50} size={profile.lowPower ? 1.2 : 1.7} speed={.12} opacity={.3} color="#9bb8e9" />
-    {items.map((item, index) => <Planet key={item.id} item={item} index={index} selected={selected.id === item.id} onSelect={onSelect} profile={profile} />)}
+    <hemisphereLight color="#f2d2aa" groundColor="#21151b" intensity={.22} />
+    <Stars radius={100} depth={64} count={profile.starCount} factor={profile.lowPower ? 2.5 : 3.1} saturation={.52} fade speed={profile.lowPower ? .1 : .2} />
+    <Sparkles count={profile.sparkleCount} scale={50} size={profile.lowPower ? 1.2 : 1.7} speed={.12} opacity={.35} color="#f3c99a" />
+    {items.map(item => <Planet key={item.id} item={item} selected={selected.id === item.id} onSelect={onSelect} profile={profile} simulationDays={simulationDays} simulationRunning={simulationRunning} />)}
     <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={.06} minDistance={2.8} maxDistance={70} enablePan rotateSpeed={.55} zoomSpeed={.72} />
   </>
 }
@@ -344,11 +380,13 @@ function StaticUniverse({ items, selected, onSelect }: {
   </div>
 }
 
-export default function Universe({ items, selected, onSelect, onReady }: {
+export default function Universe({ items, selected, onSelect, onReady, simulationRunning = true, simulationSpeed = 1 }: {
   items: SpaceObject[]
   selected: SpaceObject
   onSelect: (item: SpaceObject) => void
   onReady?: () => void
+  simulationRunning?: boolean
+  simulationSpeed?: number
 }) {
   const profile = useMemo(() => getDeviceProfile(), [])
   const [contextLost, setContextLost] = useState(false)
@@ -387,6 +425,6 @@ export default function Universe({ items, selected, onSelect, onReady }: {
       onReady?.()
     }}
   >
-    <Scene items={items} selected={selected} onSelect={onSelect} profile={profile} />
+    <Scene items={items} selected={selected} onSelect={onSelect} profile={profile} simulationRunning={simulationRunning} simulationSpeed={simulationSpeed} />
   </Canvas>
 }
