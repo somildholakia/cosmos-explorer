@@ -8,13 +8,39 @@ const textureUrls: Record<string, string> = {
   sun: 'https://play.solarsystemscope.com/textures/download/2k_sun.jpg',
   mercury: 'https://play.solarsystemscope.com/textures/download/2k_mercury.jpg',
   venus: 'https://play.solarsystemscope.com/textures/download/2k_venus_surface.jpg',
+  'venus-atmosphere': 'https://play.solarsystemscope.com/textures/download/2k_venus_atmosphere.jpg',
   earth: 'https://play.solarsystemscope.com/textures/download/2k_earth_daymap.jpg',
+  'earth-night': 'https://play.solarsystemscope.com/textures/download/2k_earth_nightmap.jpg',
+  'earth-clouds': 'https://play.solarsystemscope.com/textures/download/2k_earth_clouds.jpg',
   moon: 'https://play.solarsystemscope.com/textures/download/2k_moon.jpg',
   mars: 'https://play.solarsystemscope.com/textures/download/2k_mars.jpg',
   jupiter: 'https://play.solarsystemscope.com/textures/download/2k_jupiter.jpg',
   saturn: 'https://play.solarsystemscope.com/textures/download/2k_saturn.jpg',
+  'saturn-rings': 'https://play.solarsystemscope.com/textures/download/2k_saturn_ring_alpha.png',
   uranus: 'https://play.solarsystemscope.com/textures/download/2k_uranus.jpg',
-  neptune: 'https://play.solarsystemscope.com/textures/download/2k_neptune.jpg'
+  neptune: 'https://play.solarsystemscope.com/textures/download/2k_neptune.jpg',
+  ceres: 'https://play.solarsystemscope.com/textures/download/2k_ceres_fictional.jpg',
+  haumea: 'https://play.solarsystemscope.com/textures/download/2k_haumea_fictional.jpg',
+  makemake: 'https://play.solarsystemscope.com/textures/download/2k_makemake_fictional.jpg',
+  eris: 'https://play.solarsystemscope.com/textures/download/2k_eris_fictional.jpg',
+  io: 'https://space.jpl.nasa.gov/tmaps/pix/jup1vss2.jpg',
+  europa: 'https://space.jpl.nasa.gov/tmaps/pix/jup2vss2.jpg',
+  ganymede: 'https://space.jpl.nasa.gov/tmaps/pix/jup3vss2.jpg',
+  callisto: 'https://space.jpl.nasa.gov/tmaps/pix/jup4vss2.jpg',
+  enceladus: 'https://space.jpl.nasa.gov/tmaps/pix/sat2vss2.jpg'
+}
+}
+
+// Ultra maps load only for the focused body on desktop-class devices.
+const ultraTextureUrls: Record<string,string> = {
+  sun:'https://play.solarsystemscope.com/textures/download/8k_sun.jpg',
+  mercury:'https://play.solarsystemscope.com/textures/download/8k_mercury.jpg',
+  venus:'https://play.solarsystemscope.com/textures/download/8k_venus_surface.jpg',
+  earth:'https://play.solarsystemscope.com/textures/download/8k_earth_daymap.jpg',
+  moon:'https://play.solarsystemscope.com/textures/download/8k_moon.jpg',
+  mars:'https://play.solarsystemscope.com/textures/download/8k_mars.jpg',
+  jupiter:'https://play.solarsystemscope.com/textures/download/8k_jupiter.jpg',
+  saturn:'https://play.solarsystemscope.com/textures/download/8k_saturn.jpg'
 }
 
 type DeviceProfile = {
@@ -68,7 +94,7 @@ function useDisposableTexture(url?: string) {
       url,
       (ready) => {
         ready.colorSpace = THREE.SRGBColorSpace
-        ready.anisotropy = 2
+        ready.anisotropy = 8
         if (disposed) ready.dispose()
         else setTexture(ready)
       },
@@ -85,6 +111,87 @@ function useDisposableTexture(url?: string) {
   }, [url])
 
   return texture
+}
+
+
+/** Deterministic equirectangular maps keep unselected bodies textured without large downloads. */
+function createProceduralSurface(id:string,color:string,simple:boolean):THREE.CanvasTexture{
+  const canvas=document.createElement('canvas')
+  canvas.width=simple?256:512
+  canvas.height=canvas.width/2
+  const ctx=canvas.getContext('2d')
+  if(!ctx)throw new Error('Canvas 2D context unavailable for procedural surface')
+  const base=new THREE.Color(color)
+  const tint=(hex:string,amount:number)=>`#${base.clone().lerp(new THREE.Color(hex),amount).getHexString()}`
+  let seed=0x45d9f3b
+  for(let i=0;i<id.length;i++)seed=(Math.imul(seed^id.charCodeAt(i),2654435761)>>>0)
+  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+  const w=canvas.width,h=canvas.height
+  const gas=['jupiter','saturn','uranus','neptune'].includes(id)
+  const star=['sun','sirius','proxima','betelgeuse'].includes(id)
+  const gradient=ctx.createLinearGradient(0,0,0,h)
+  gradient.addColorStop(0,tint('#ffffff',.28));gradient.addColorStop(.48,color);gradient.addColorStop(1,tint('#241c2a',.48))
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,w,h)
+  if(gas){
+    const bands=id==='jupiter'?22:id==='saturn'?17:12
+    for(let band=0;band<bands;band++){
+      const y=band/bands*h,bh=h/bands*(.38+random()*.55)
+      ctx.fillStyle=band%2===0?tint('#fff0d9',.25+random()*.22):tint('#4a2631',.14+random()*.2)
+      ctx.globalAlpha=.42+random()*.32;ctx.beginPath();ctx.moveTo(0,y)
+      for(let x=0;x<=w;x+=w/16)ctx.lineTo(x,y+Math.sin(x/w*Math.PI*(2+random()*2)+band)*bh*.34)
+      ctx.lineTo(w,y+bh);ctx.lineTo(0,y+bh);ctx.closePath();ctx.fill()
+    }
+    ctx.globalAlpha=.28
+    for(let i=0;i<(simple?28:86);i++){
+      const x=random()*w,y=random()*h,rx=4+random()*26,ry=1+random()*5
+      ctx.fillStyle=random()>.5?tint('#fff6d8',.55):tint('#492d38',.38)
+      ctx.beginPath();ctx.ellipse(x,y,rx,ry,random()*.2,0,Math.PI*2);ctx.fill()
+    }
+  }else if(star){
+    for(let i=0;i<(simple?220:760);i++){
+      const x=random()*w,y=random()*h,r=.5+random()*3.2
+      ctx.fillStyle=random()>.48?'#fff4d1':tint('#662f25',.55);ctx.globalAlpha=.14+random()*.44
+      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()
+    }
+    if(id==='sun')for(let i=0;i<18;i++){const x=random()*w,y=random()*h,r=3+random()*12;ctx.fillStyle='rgba(255,247,194,.22)';ctx.beginPath();ctx.ellipse(x,y,r*1.8,r,random()*Math.PI,0,Math.PI*2);ctx.fill()}
+  }else{
+    const cratered=!['venus','earth','trappist-1e','kepler-186f'].includes(id)
+    if(cratered){
+      for(let i=0;i<(simple?75:220);i++){
+        const x=random()*w,y=8+random()*(h-16),r=1.2+Math.pow(random(),2)*13
+        const shade=ctx.createRadialGradient(x-r*.24,y-r*.3,r*.08,x,y,r)
+        shade.addColorStop(0,tint('#ffffff',.46));shade.addColorStop(.52,tint('#42363a',.14));shade.addColorStop(.82,tint('#18141c',.48));shade.addColorStop(1,tint('#ffffff',.22))
+        ctx.fillStyle=shade;ctx.globalAlpha=.24+random()*.42;ctx.beginPath();ctx.ellipse(x,y,r,r*(.45+random()*.22),0,0,Math.PI*2);ctx.fill()
+      }
+    }else{
+      for(let i=0;i<(simple?60:180);i++){
+        const x=random()*w,y=random()*h
+        ctx.strokeStyle=i%3===0?tint('#f9e7ca',.46):tint('#1c5268',.42);ctx.globalAlpha=.15+random()*.2;ctx.lineWidth=1+random()*4
+        ctx.beginPath();ctx.moveTo(x,y);ctx.bezierCurveTo(x+random()*26,y-8,x+random()*38,y+14,x+random()*60,y+random()*18);ctx.stroke()
+      }
+    }
+    for(let i=0;i<(simple?900:2400);i++){
+      const x=random()*w,y=random()*h;ctx.fillStyle=random()>.5?'rgba(255,244,225,.5)':'rgba(26,19,24,.45)';ctx.globalAlpha=.06+random()*.14;ctx.fillRect(x,y,.5+random()*1.5,.5+random()*1.5)
+    }
+  }
+  ctx.globalAlpha=1
+  const texture=new THREE.CanvasTexture(canvas)
+  texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=THREE.RepeatWrapping;texture.anisotropy=4;texture.needsUpdate=true
+  return texture
+}
+function useProceduralSurface(item:SpaceObject,simple:boolean){
+  const texture=useMemo(()=>{
+    if(item.kind==='Black hole'||item.kind==='Galaxy'||item.kind==='Nebula')return null
+    return createProceduralSurface(item.id,item.color,simple)
+  },[item.id,item.color,item.kind,simple])
+  useEffect(()=>()=>texture?.dispose(),[texture])
+  return texture
+}
+function AtmosphereHalo({radius,color,opacity=0.16}:{radius:number;color:string;opacity?:number}){
+  return <mesh scale={1.055}>
+    <sphereGeometry args={[radius,32,32]}/>
+    <meshBasicMaterial color={color} transparent opacity={opacity} side={THREE.BackSide} depthWrite={false} blending={THREE.AdditiveBlending}/>
+  </mesh>
 }
 
 const AU_SCALE=2.05
@@ -190,16 +297,22 @@ function NebulaStructure({ color, simple }: { color: string; simple: boolean }) 
   </group>
 }
 
-function EarthCloudLayer({ radius }: { radius: number }) {
-  const clouds = useDisposableTexture('https://play.solarsystemscope.com/textures/download/2k_earth_clouds.jpg')
+function EarthCloudLayer({ radius, running }: { radius: number; running:boolean }) {
+  const clouds = useDisposableTexture(textureUrls['earth-clouds'])
   const ref = useRef<THREE.Mesh>(null!)
-  useFrame((_,delta) => { if (ref.current) ref.current.rotation.y += delta*.006 })
+  useFrame((_,delta) => { if (running && ref.current) ref.current.rotation.y += delta*.006 })
   if (!clouds) return null
 
   return <mesh ref={ref} scale={1.018}>
     <sphereGeometry args={[radius, 32, 32]} />
     <meshStandardMaterial color="#ffffff" alphaMap={clouds} transparent opacity={.3} depthWrite={false} roughness={1} />
   </mesh>
+}
+
+function EarthNightLayer({radius}:{radius:number}){
+  const night=useDisposableTexture(textureUrls['earth-night'])
+  if(!night)return null
+  return <mesh scale={1.003}><sphereGeometry args={[radius,40,40]}/><meshBasicMaterial map={night} alphaMap={night} color="#ffd58b" transparent opacity={.76} depthWrite={false} blending={THREE.AdditiveBlending}/></mesh>
 }
 
 function Planet({ item, selected, onSelect, profile, simulationDays, simulationRunning }: {
@@ -216,6 +329,7 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
   const isStar = item.kind === 'Star'
   const isComet = item.kind === 'Comet'
   const isEarth = item.id === 'earth'
+  const isVenus = item.id === 'venus'
   const isSaturn = item.id === 'saturn'
   const isUranus = item.id === 'uranus'
   const isNeptune = item.id === 'neptune'
@@ -223,7 +337,12 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
   const isBlackHole = item.kind === 'Black hole'
   const orbit = orbitalElements[item.id]
   const radius = item.size * .64
-  const texture = useDisposableTexture(selected ? textureUrls[item.id] : undefined)
+  const selectedMapUrl = selected && !profile.lowPower ? (ultraTextureUrls[item.id] ?? textureUrls[item.id]) : (selected ? textureUrls[item.id] : undefined)
+  const texture = useDisposableTexture(selectedMapUrl)
+  const proceduralTexture = useProceduralSurface(item,profile.lowPower)
+  const surfaceMap = texture ?? proceduralTexture
+  const venusClouds = useDisposableTexture(isVenus && selected ? textureUrls['venus-atmosphere'] : undefined)
+  const saturnRings = useDisposableTexture(isSaturn && selected ? textureUrls['saturn-rings'] : undefined)
 
   useFrame((_,delta) => {
     if (!group.current) return
@@ -258,38 +377,52 @@ function Planet({ item, selected, onSelect, profile, simulationDays, simulationR
           onClick={e => { e.stopPropagation(); onSelect(item) }}
           onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
           onPointerOut={() => { document.body.style.cursor = 'auto' }}>
-          <sphereGeometry args={[radius, profile.geometryDetail, profile.geometryDetail]} />
+          <sphereGeometry args={[radius, selected ? (profile.lowPower ? 48 : 96) : (profile.lowPower ? 16 : 32), selected ? (profile.lowPower ? 48 : 96) : (profile.lowPower ? 16 : 32)]} />
           <meshStandardMaterial
-            map={texture ?? undefined}
-            color={texture ? '#ffffff' : isBlackHole ? '#020308' : item.color}
-            roughness={isSun ? .58 : .84}
-            metalness={isBlackHole ? .18 : .025}
+            map={surfaceMap ?? undefined}
+            bumpMap={surfaceMap ?? undefined}
+            bumpScale={isBlackHole ? 0 : (selected ? (profile.lowPower ? .012 : .026) : .008)}
+            color={surfaceMap ? '#ffffff' : isBlackHole ? '#020308' : item.color}
+            roughness={isSun ? .72 : isJupiter || isSaturn || isUranus || isNeptune ? .96 : .88}
+            metalness={isBlackHole ? .18 : .015}
             emissive={(isSun || isStar) ? item.color : selected ? item.color : '#000000'}
-            emissiveMap={isSun ? texture ?? undefined : undefined}
-            emissiveIntensity={isSun ? .8 : isStar ? .48 : selected ? .1 : .012}
+            emissiveMap={isSun ? surfaceMap ?? undefined : undefined}
+            emissiveIntensity={isSun ? .68 : isStar ? .3 : selected ? .07 : .008}
           />
         </mesh>
         {!isSun && !isBlackHole && <mesh scale={item.id === 'venus' ? 1.1 : 1.055}>
           <sphereGeometry args={[radius, profile.lowPower ? 18 : 32, profile.lowPower ? 18 : 32]} />
           <meshBasicMaterial color={item.color} transparent opacity={profile.lowPower ? (item.id === 'venus' ? .055 : .025) : (item.id === 'venus' ? .1 : .045)} side={THREE.BackSide} depthWrite={false} />
         </mesh>}
-        {isJupiter && <mesh position={[radius * .94, radius * .11, 0]} scale={[.085, .035, .018]}>
-          <sphereGeometry args={[radius, 16, 12]} /><meshBasicMaterial color="#a95742" transparent opacity={.78} />
-        </mesh>}
+        {/* Jupiter's storms are rendered in the mapped cloud bands instead of a detached placeholder. */}
         {isStar && !isSun && <>
-          <mesh scale={1.55}><sphereGeometry args={[radius,20,20]}/><meshBasicMaterial color={item.color} transparent opacity={.09} side={THREE.BackSide} depthWrite={false}/></mesh>
+          <AtmosphereHalo radius={radius} color={item.color} opacity={.18}/>
           <mesh scale={2.05}><sphereGeometry args={[radius,16,16]}/><meshBasicMaterial color={item.color} transparent opacity={.035} side={THREE.BackSide} depthWrite={false}/></mesh>
         </>}
         {isSun && <>
           <mesh scale={1.65}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#ffbf69" transparent opacity={.065} side={THREE.BackSide} /></mesh>
           <mesh scale={2.2}><sphereGeometry args={[radius, 24, 24]} /><meshBasicMaterial color="#e89b51" transparent opacity={.022} side={THREE.BackSide} /></mesh>
         </>}
-        {isEarth && selected && <><mesh scale={1.12}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#6ebbe9" transparent opacity={.1} side={THREE.BackSide} /></mesh><EarthCloudLayer radius={radius} /></>}
+        {isEarth && selected && <>
+          <AtmosphereHalo radius={radius} color="#72bfe7" opacity={.2}/>
+          <EarthNightLayer radius={radius}/>
+          <EarthCloudLayer radius={radius} running={simulationRunning}/>
+        </>}
+        {isVenus && selected && venusClouds && <mesh scale={1.018}>
+          <sphereGeometry args={[radius,40,40]}/>
+          <meshBasicMaterial map={venusClouds} color="#fff0cf" transparent opacity={.24} depthWrite={false}/>
+        </mesh>}
+        {isEarth && !selected && <AtmosphereHalo radius={radius} color="#72bfe7" opacity={.09}/>}
+
         {isSaturn && <>
-          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.12, radius * 1.34, profile.lowPower ? 40 : 72]} /><meshStandardMaterial color="#9e896e" side={THREE.DoubleSide} transparent opacity={.62} roughness={1} /></mesh>
-          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.38, radius * 1.78, profile.lowPower ? 48 : 88]} /><meshStandardMaterial color="#e4d0a5" side={THREE.DoubleSide} transparent opacity={.86} roughness={1} /></mesh>
-          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.82, radius * 2.1, profile.lowPower ? 40 : 72]} /><meshStandardMaterial color="#b9a27d" side={THREE.DoubleSide} transparent opacity={.5} roughness={1} /></mesh>
-          <mesh rotation={[Math.PI / 2.25, 0, 0]}><ringGeometry args={[radius * 1.34, radius * 1.38, profile.lowPower ? 32 : 64]} /><meshBasicMaterial color="#171921" side={THREE.DoubleSide} transparent opacity={.88} /></mesh>
+          <mesh rotation={[Math.PI / 2.25, 0, 0]}>
+            <ringGeometry args={[radius * 1.12, radius * 2.1, profile.lowPower ? 64 : 128]}/>
+            <meshStandardMaterial map={saturnRings ?? undefined} color={saturnRings ? '#ffffff' : '#d8c4a0'} side={THREE.DoubleSide} transparent opacity={saturnRings ? .96 : .76} roughness={1} depthWrite={false}/>
+          </mesh>
+          <mesh rotation={[Math.PI / 2.25, 0, 0]}>
+            <ringGeometry args={[radius * 1.34, radius * 1.38, profile.lowPower ? 32 : 64]}/>
+            <meshBasicMaterial color="#171018" side={THREE.DoubleSide} transparent opacity={.84}/>
+          </mesh>
         </>}
         {(isUranus || isNeptune) && <mesh rotation={[Math.PI / 2.1, 0, 0]}>
           <ringGeometry args={[radius * 1.42, radius * 1.62, profile.lowPower ? 40 : 76]} />

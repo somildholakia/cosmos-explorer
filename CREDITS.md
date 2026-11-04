@@ -1,27 +1,34 @@
 # Third-party asset credits
 
-## Planetary surface maps
+## Solar System Scope surface maps
 
-Planetary surface maps and Earth cloud map are from **Solar System Scope**:
+The following equirectangular maps are loaded from Solar System Scope:
 https://www.solarsystemscope.com/textures/
 
-The source describes these as equirectangular planetary maps that may be used in 3D rendering. The pack is distributed under the **Creative Commons Attribution 4.0 International (CC BY 4.0)** license.
+The source distributes its texture pack under Creative Commons Attribution 4.0 International (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
 
-License: https://creativecommons.org/licenses/by/4.0/
-
-Assets currently used by the explorer:
-- Sun — 2k_sun.jpg
-- Mercury — 2k_mercury.jpg
-- Venus — 2k_venus_surface.jpg
-- Earth — 2k_earth_daymap.jpg
-- Earth clouds — 2k_earth_clouds.jpg
-- Moon — 2k_moon.jpg
-- Mars — 2k_mars.jpg
-- Jupiter — 2k_jupiter.jpg
-- Saturn — 2k_saturn.jpg
-- Uranus — 2k_uranus.jpg
-- Neptune — 2k_neptune.jpg
+Base and selected-body maps used:
+- Sun, Mercury, Venus surface, Earth day/night/cloud layers, Moon, Mars, Jupiter, Saturn, Saturn rings, Uranus and Neptune.
+- Ceres, Haumea, Makemake and Eris use Solar System Scope's explicitly labelled fictional maps. Those maps are representative artistic surfaces based on available NASA elevation/imagery data; they are not complete scientific global mosaics.
+- On desktop, the focused Sun, Mercury, Venus, Earth, Moon, Mars, Jupiter and Saturn may load the source's 8K variant. Mobile and constrained devices stay on 2K maps. High-resolution maps are requested only for the currently selected body.
 
 Attribution: Solar System Scope (solarsystemscope.com), CC BY 4.0.
 
-The source notes that some unmapped areas in the planetary maps are filled with representative terrain and that colour treatments are tuned for visual clarity. These are visual maps for an educational 3D experience, not primary scientific measurement datasets.
+## Voyager / Galileo moon maps
+
+Several moon maps are loaded from the NASA/JPL Solar System Simulator:
+https://space.jpl.nasa.gov/tmaps/jupiter.html
+https://space.jpl.nasa.gov/tmaps/saturn.html
+
+- Io — jup1vss2.jpg (Voyager/Galileo colour mosaic; JPL/Caltech)
+- Europa — jup2vss2.jpg (Voyager/USGS cleaned mosaic; JPL/Caltech)
+- Ganymede — jup3vss2.jpg (Voyager/USGS cleaned mosaic; JPL/Caltech)
+- Callisto — jup4vss2.jpg (Voyager/USGS cleaned mosaic; JPL/Caltech)
+- Enceladus — sat2vss2.jpg (Voyager/USGS cleaned mosaic; JPL/Caltech)
+
+NASA/JPL notes that some global maps contain data gaps and may be processed or enhanced for visualization. They are used here as educational visual maps, not for scientific measurement.
+
+## Original procedural surface maps
+
+Bodies without a suitable global image map receive a deterministic, original CanvasTexture generated at runtime. These are visual fallback textures and are not presented as spacecraft imagery or scientific elevation data.
