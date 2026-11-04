@@ -39,11 +39,11 @@ function getDeviceProfile(): DeviceProfile {
   return {
     mobile,
     lowPower,
-    pixelRatio: lowPower ? 0.85 : Math.min(window.devicePixelRatio || 1, 1.35),
-    starCount: lowPower ? 1050 : 4300,
-    sparkleCount: lowPower ? 26 : 115,
-    galaxyPoints: lowPower ? 520 : 1500,
-    geometryDetail: lowPower ? 28 : 56
+    pixelRatio: lowPower ? 0.78 : Math.min(window.devicePixelRatio || 1, 1.35),
+    starCount: lowPower ? 760 : 4300,
+    sparkleCount: lowPower ? 18 : 115,
+    galaxyPoints: lowPower ? 360 : 1500,
+    geometryDetail: lowPower ? 24 : 56
   }
 }
 
@@ -295,6 +295,39 @@ function Scene({ items, selected, onSelect, profile }: {
   </>
 }
 
+function StaticUniverse({ items, selected, onSelect }: {
+  items: SpaceObject[]
+  selected: SpaceObject
+  onSelect: (item: SpaceObject) => void
+}) {
+  return <div className="map-fallback" role="group" aria-label="Interactive 2D star map">
+    <div className="map-fallback-orbit map-orbit-one" />
+    <div className="map-fallback-orbit map-orbit-two" />
+    <div className="map-fallback-orbit map-orbit-three" />
+    <div className="map-fallback-core" />
+    <div className="map-fallback-hud"><span className="eyebrow">INTERACTIVE STAR MAP</span><b>GPU-SAFE MODE</b></div>
+    {items.map((item, index) => {
+      const angle = (index * 137.508 - 90) * Math.PI / 180
+      const radius = item.id === 'sun' ? 0 : 16 + ((index * 7) % 4) * 5.5
+      const left = 50 + Math.cos(angle) * radius
+      const top = 50 + Math.sin(angle) * radius * .72
+      return <button
+        key={item.id}
+        type="button"
+        className={selected.id === item.id ? 'map-fallback-node is-selected' : 'map-fallback-node'}
+        style={{ left: `${left}%`, top: `${top}%`, '--planet-color': item.color } as React.CSSProperties}
+        onClick={() => onSelect(item)}
+        aria-label={`Select ${item.name}`}
+        title={item.name}
+      >
+        <span className="map-fallback-node-dot" />
+        {selected.id === item.id && <span className="map-fallback-node-label">{item.name}</span>}
+      </button>
+    })}
+    <div className="map-fallback-caption">SELECT ANY OBJECT TO OPEN ITS DOSSIER</div>
+  </div>
+}
+
 export default function Universe({ items, selected, onSelect, onReady }: {
   items: SpaceObject[]
   selected: SpaceObject
@@ -306,15 +339,14 @@ export default function Universe({ items, selected, onSelect, onReady }: {
   const [canvasKey, setCanvasKey] = useState(0)
 
   if (contextLost) {
-    return <div className="scene-fallback" role="alert">
-      <div className="scene-fallback-inner">
-        <span className="eyebrow">3D VIEW PAUSED</span>
-        <strong>The graphics session was interrupted.</strong>
-        <p>Your selected object and catalogue are still safe. Restart the 3D scene to continue exploring.</p>
+    return <div className="scene-fallback-shell">
+      <StaticUniverse items={items} selected={selected} onSelect={onSelect} />
+      <div className="scene-fallback-banner" role="status">
+        <div><span className="eyebrow">2D SAFE MODE</span><strong>3D graphics paused to protect this device.</strong></div>
         <button className="scene-retry" onClick={() => {
           setContextLost(false)
           setCanvasKey(value => value + 1)
-        }}>Restart 3D view</button>
+        }}>Retry 3D</button>
       </div>
     </div>
   }
@@ -329,7 +361,7 @@ export default function Universe({ items, selected, onSelect, onReady }: {
       powerPreference: 'low-power',
       preserveDrawingBuffer: false
     }}
-    fallback={<div className="scene-fallback">This device cannot start the 3D view. Try enabling hardware acceleration in your browser, or open COSMOS on a device with WebGL support.</div>}
+    fallback={<StaticUniverse items={items} selected={selected} onSelect={onSelect} />}
     onCreated={({ gl }) => {
       gl.domElement.addEventListener('webglcontextlost', (event) => {
         event.preventDefault()

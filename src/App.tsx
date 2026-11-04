@@ -1,13 +1,21 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Crosshair, RotateCcw, Sparkles, Menu, Shuffle } from 'lucide-react'
+import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Crosshair, RotateCcw, Sparkles, Menu, Shuffle, Bookmark } from 'lucide-react'
 const Universe = lazy(() => import('./Universe'))
 import { objects, type SpaceObject } from './data'
 
-const filters = ['All', 'Planet', 'Star', 'Moon', 'Galaxy', 'Nebula', 'Black hole'] as const
+const filters = ['All', 'Planet', 'Star', 'Moon', 'Galaxy', 'Nebula', 'Black hole', 'Saved'] as const
 const formatKind = (kind: string) => kind.toUpperCase()
 
 export default function App() {
   const [selected, setSelected] = useState<SpaceObject>(objects[3])
+  const [savedIds, setSavedIds] = useState<string[]>(() => {
+    try {
+      const stored: unknown = JSON.parse(localStorage.getItem('cosmos:saved-worlds') ?? '[]')
+      return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string' && objects.some(item => item.id === id)) : []
+    } catch {
+      return []
+    }
+  })
   const [activeFilter, setActiveFilter] = useState<string>('All')
   const [query, setQuery] = useState('')
   const [showInfo, setShowInfo] = useState(true)
@@ -19,6 +27,14 @@ export default function App() {
     const next = candidates[Math.floor(Math.random() * candidates.length)]
     if (next) choose(next)
   }
+  const toggleSaved = () => setSavedIds(current => current.includes(selected.id)
+    ? current.filter(id => id !== selected.id)
+    : [...current, selected.id])
+  const isSaved = savedIds.includes(selected.id)
+
+  useEffect(() => {
+    try { localStorage.setItem('cosmos:saved-worlds', JSON.stringify(savedIds)) } catch { /* Storage can be unavailable in private browsing. */ }
+  }, [savedIds])
   const searchInputRef = useRef<HTMLInputElement>(null)
   const catalogueSearchRef = useRef<HTMLInputElement>(null)
 
@@ -40,7 +56,7 @@ export default function App() {
   useEffect(() => {
     if (showCatalogue) catalogueSearchRef.current?.focus()
   }, [showCatalogue])
-  const filtered = useMemo(() => objects.filter(o => (activeFilter === 'All' || o.kind === activeFilter) && (o.name.toLowerCase().includes(query.toLowerCase()) || o.subtitle.toLowerCase().includes(query.toLowerCase()))), [activeFilter, query])
+  const filtered = useMemo(() => objects.filter(o => (activeFilter === 'All' || (activeFilter === 'Saved' ? savedIds.includes(o.id) : o.kind === activeFilter)) && (o.name.toLowerCase().includes(query.toLowerCase()) || o.subtitle.toLowerCase().includes(query.toLowerCase()) || o.description.toLowerCase().includes(query.toLowerCase()) || o.fact.toLowerCase().includes(query.toLowerCase()))), [activeFilter, query, savedIds])
   const choose = (item: SpaceObject) => { setSelected(item); setShowInfo(true); setShowCatalogue(false) }
   return <main className="app-shell">
     <header className="topbar">
@@ -54,23 +70,23 @@ export default function App() {
     </header>
     <section className="workspace" id="explore">
       <aside className="left-rail">
-        <div className="rail-kicker">FIELD NOTES <span>01 — 07</span></div>
+        <div className="rail-kicker">FIELD NOTES <span>01 — 08</span></div>
         <div className="rail-heading">Explore the<br/><em>unexplored.</em></div>
         <p className="rail-copy">A living map of the cosmos. Move through space, discover extraordinary worlds, and get closer to the science behind them.</p>
         <div className="search-box"><Search size={16}/><input ref={searchInputRef} value={query} onChange={e=>{setQuery(e.target.value);setShowCatalogue(true)}} placeholder="Find a world..." aria-label="Search celestial objects"/><kbd>⌘ K</kbd></div>
         <div className="section-row"><span>OBJECT TYPES</span><SlidersHorizontal size={14}/></div>
-        <div className="filter-list">{filters.map(f=><button key={f} className={activeFilter===f?'filter-chip chosen':'filter-chip'} onClick={()=>{setActiveFilter(f);setShowCatalogue(true)}}><span className={'filter-dot '+f.toLowerCase().replace(' ','-')}/>{f}<span className="filter-count">{f==='All'?objects.length:objects.filter(o=>o.kind===f).length}</span></button>)}</div>
+        <div className="filter-list">{filters.map(f=><button key={f} className={activeFilter===f?'filter-chip chosen':'filter-chip'} onClick={()=>{setActiveFilter(f);setShowCatalogue(true)}}><span className={'filter-dot '+f.toLowerCase().replace(' ','-')}/>{f}<span className="filter-count">{f==='All'?objects.length:f==='Saved'?savedIds.length:objects.filter(o=>o.kind===f).length}</span></button>)}</div>
         <div className="rail-bottom"><div className="tiny-orbit"><Orbit size={17}/></div><div><b>THE KNOWN UNIVERSE</b><small>One small step at a time.</small></div></div>
       </aside>
       <section className="universe-stage">
-        <div className="stage-topline"><div><span className="eyebrow">OBSERVATION DECK</span><span className="stage-coordinate"> / SOL SYSTEM · LOCAL GROUP</span></div><div className="stage-tools"><span className="scale-label">AUTO QUALITY <b>DEVICE OPTIMISED</b></span><button className={focusMode?'tool-button selected-tool':'tool-button'} onClick={()=>setFocusMode(!focusMode)} title="Toggle focus mode"><Crosshair size={15}/></button><button className="tool-button" onClick={()=>choose(objects[3])} title="Return to Earth"><RotateCcw size={15}/></button><button className="tool-button discover-button" onClick={discover} title="Discover a random world"><Shuffle size={15}/></button></div></div>
+        <div className="stage-topline"><div><span className="eyebrow">OBSERVATION DECK</span><span className="stage-coordinate"> / SOL SYSTEM · LOCAL GROUP</span></div><div className="stage-tools"><span className="scale-label">AUTO QUALITY <b>DEVICE OPTIMISED</b></span><button className={focusMode?'tool-button selected-tool':'tool-button'} onClick={()=>setFocusMode(!focusMode)} title="Toggle focus mode"><Crosshair size={15}/></button><button className="tool-button" onClick={()=>choose(objects[3])} title="Return to Earth"><RotateCcw size={15}/></button><button className="tool-button" onClick={()=>{setActiveFilter('Saved');setQuery('');setShowCatalogue(true)}} title="Open saved worlds" aria-label="Open saved worlds"><Bookmark size={15}/></button><button className="tool-button discover-button" onClick={discover} title="Discover a random world" aria-label="Discover a random world"><Shuffle size={15}/></button></div></div>
         <div className="canvas-wrap"><Suspense fallback={<div className="scene-loading">Preparing the starfield…</div>}><Universe items={objects} selected={selected} onSelect={choose}/></Suspense><div className="canvas-vignette"/><div className="canvas-label top-left"><span className="label-line"/> MILKY WAY · LOCAL VIEW</div><div className="canvas-label bottom-left"><span className="pulse-dot"/> GRAVITY FIELD ACTIVE</div><div className="canvas-hint"><span>DRAG TO ROTATE</span><span>PINCH TO ZOOM</span></div>
           {!focusMode && <div className="object-tooltip"><span className="tooltip-index">SELECTED OBJECT</span><b>{selected.name}</b><small>{formatKind(selected.kind)} · {selected.distance}</small></div>}
         </div>
-        <div className="stage-footer"><span>01 <i/> 14 CELESTIAL OBJECTS</span><span>TOUCH FRIENDLY · ADAPTIVE RENDERING</span><span>DATA: CURATED SCIENCE SUMMARIES</span></div>
+        <div className="stage-footer"><span>01 <i/> {objects.length} CELESTIAL OBJECTS</span><span>TOUCH FRIENDLY · ADAPTIVE RENDERING</span><span>DATA: CURATED SCIENCE SUMMARIES</span></div>
       </section>
       {showInfo && <aside className="info-panel">
-        <div className="panel-top"><span className="eyebrow">CELESTIAL DOSSIER <span className="gold">✳</span></span><button className="icon-button" onClick={()=>setShowInfo(false)} aria-label="Close information"><X size={17}/></button></div>
+        <div className="panel-top"><span className="eyebrow">CELESTIAL DOSSIER <span className="gold">✳</span></span><div className="panel-actions"><button className={isSaved?'icon-button saved-toggle is-saved':'icon-button saved-toggle'} onClick={toggleSaved} aria-label={isSaved?'Remove from saved worlds':'Save this world'} aria-pressed={isSaved} title={isSaved?'Saved to your collection':'Save this world'}><Bookmark size={16} fill={isSaved?'currentColor':'none'}/></button><button className="icon-button" onClick={()=>setShowInfo(false)} aria-label="Close information"><X size={17}/></button></div></div>
         <div className="object-art" style={{'--planet-color':selected.color} as React.CSSProperties}><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-planet"/><div className="art-glow"/></div>
         <div className="object-title"><span className="object-type">{selected.kind.toUpperCase()} <i/> {selected.id.toUpperCase()}</span><h1>{selected.name}</h1><p>{selected.subtitle}</p></div>
         <div className="stat-grid"><div><span>DISTANCE</span><b>{selected.distance}</b></div><div><span>DIAMETER</span><b>{selected.diameter}</b></div><div className="wide-stat"><span>TEMPERATURE</span><b>{selected.temperature}</b></div></div>
@@ -81,7 +97,7 @@ export default function App() {
       </aside>}
       {!showInfo && <button className="reopen-info" onClick={()=>setShowInfo(true)}><Info size={16}/> Object details</button>}
     </section>
-    {showCatalogue && <div className="modal-backdrop" onClick={()=>setShowCatalogue(false)}><section className="catalogue-modal" onClick={e=>e.stopPropagation()}><div className="catalogue-head"><div><span className="eyebrow">THE COSMIC INDEX</span><h2>Find your next <em>destination.</em></h2></div><button className="icon-button" onClick={()=>setShowCatalogue(false)} aria-label="Close catalogue"><X size={18}/></button></div><div className="catalogue-search"><Search size={17}/><input ref={catalogueSearchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search objects, types, descriptions..."/></div><div className="catalogue-filters">{filters.map(f=><button key={f} className={activeFilter===f?'active':''} onClick={()=>setActiveFilter(f)}>{f}</button>)}</div><div className="catalogue-list">{filtered.map((item,i)=><button className="catalogue-item" key={item.id} onClick={()=>choose(item)}><span className="catalogue-number">{String(i+1).padStart(2,'0')}</span><span className="catalogue-orb" style={{'--planet-color':item.color} as React.CSSProperties}/><span className="catalogue-name"><b>{item.name}</b><small>{item.subtitle}</small></span><span className="catalogue-kind">{item.kind}</span><span className="catalogue-distance">{item.distance}</span><ChevronRight size={16}/></button>)}{filtered.length===0&&<p className="empty-state">No objects found. Try another search.</p>}</div><div className="catalogue-foot">{filtered.length} OBJECTS IN VIEW <span>SELECT AN OBJECT TO OPEN ITS DOSSIER</span></div></section></div>}
+    {showCatalogue && <div className="modal-backdrop" onClick={()=>setShowCatalogue(false)}><section className="catalogue-modal" onClick={e=>e.stopPropagation()}><div className="catalogue-head"><div><span className="eyebrow">THE COSMIC INDEX</span><h2>Find your next <em>destination.</em></h2></div><button className="icon-button" onClick={()=>setShowCatalogue(false)} aria-label="Close catalogue"><X size={18}/></button></div><div className="catalogue-search"><Search size={17}/><input ref={catalogueSearchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search objects, types, descriptions..."/></div><div className="catalogue-filters">{filters.map(f=><button key={f} className={activeFilter===f?'active':''} onClick={()=>setActiveFilter(f)}>{f}</button>)}</div><div className="catalogue-list">{filtered.map((item,i)=><button className="catalogue-item" key={item.id} onClick={()=>choose(item)}><span className="catalogue-number">{String(i+1).padStart(2,'0')}</span><span className="catalogue-orb" style={{'--planet-color':item.color} as React.CSSProperties}/><span className="catalogue-name"><b>{item.name}</b><small>{item.subtitle}</small></span><span className="catalogue-kind">{item.kind}</span><span className="catalogue-distance">{item.distance}</span><ChevronRight size={16}/></button>)}{filtered.length===0&&<p className="empty-state">{activeFilter==='Saved'?'Your collection is empty. Save an object from its dossier and it will appear here.':'No objects found. Try another search.'}</p>}</div><div className="catalogue-foot">{filtered.length} OBJECTS IN VIEW <span>SELECT AN OBJECT TO OPEN ITS DOSSIER</span></div></section></div>}
     <footer className="bottom-bar"><span>© 2026 COSMOS EXPLORER</span><span>MADE FOR THE CURIOUS <i>✳</i></span><a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noreferrer">SURFACE MAPS: SOLAR SYSTEM SCOPE ↗</a></footer>
   </main>
 }
