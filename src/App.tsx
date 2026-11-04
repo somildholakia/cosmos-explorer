@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Search, Compass, Orbit, SlidersHorizontal, Info, ChevronRight, X, Crosshair, RotateCcw, Sparkles, Menu } from 'lucide-react'
-import Universe from './Universe'
+const Universe = lazy(() => import('./Universe'))
 import { objects, type SpaceObject } from './data'
 
 const filters = ['All', 'Planet', 'Star', 'Moon', 'Galaxy', 'Nebula', 'Black hole'] as const
@@ -14,6 +14,27 @@ export default function App() {
   const [showCatalogue, setShowCatalogue] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const catalogueSearchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setShowCatalogue(true)
+      }
+      if (event.key === 'Escape') {
+        setShowCatalogue(false)
+        setShowMobileMenu(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    if (showCatalogue) catalogueSearchRef.current?.focus()
+  }, [showCatalogue])
   const filtered = useMemo(() => objects.filter(o => (activeFilter === 'All' || o.kind === activeFilter) && (o.name.toLowerCase().includes(query.toLowerCase()) || o.subtitle.toLowerCase().includes(query.toLowerCase()))), [activeFilter, query])
   const choose = (item: SpaceObject) => { setSelected(item); setShowInfo(true); setShowCatalogue(false) }
   return <main className="app-shell">
@@ -31,14 +52,14 @@ export default function App() {
         <div className="rail-kicker">FIELD NOTES <span>01 — 07</span></div>
         <div className="rail-heading">Explore the<br/><em>unexplored.</em></div>
         <p className="rail-copy">A living map of the cosmos. Move through space, discover extraordinary worlds, and get closer to the science behind them.</p>
-        <div className="search-box"><Search size={16}/><input value={query} onChange={e=>{setQuery(e.target.value);setShowCatalogue(true)}} placeholder="Find a world..." aria-label="Search celestial objects"/><kbd>⌘ K</kbd></div>
+        <div className="search-box"><Search size={16}/><input ref={searchInputRef} value={query} onChange={e=>{setQuery(e.target.value);setShowCatalogue(true)}} placeholder="Find a world..." aria-label="Search celestial objects"/><kbd>⌘ K</kbd></div>
         <div className="section-row"><span>OBJECT TYPES</span><SlidersHorizontal size={14}/></div>
         <div className="filter-list">{filters.map(f=><button key={f} className={activeFilter===f?'filter-chip chosen':'filter-chip'} onClick={()=>{setActiveFilter(f);setShowCatalogue(true)}}><span className={'filter-dot '+f.toLowerCase().replace(' ','-')}/>{f}<span className="filter-count">{f==='All'?objects.length:objects.filter(o=>o.kind===f).length}</span></button>)}</div>
         <div className="rail-bottom"><div className="tiny-orbit"><Orbit size={17}/></div><div><b>THE KNOWN UNIVERSE</b><small>One small step at a time.</small></div></div>
       </aside>
       <section className="universe-stage">
         <div className="stage-topline"><div><span className="eyebrow">OBSERVATION DECK</span><span className="stage-coordinate"> / SOL SYSTEM · LOCAL GROUP</span></div><div className="stage-tools"><span className="scale-label">SCALE <b>ILLUSTRATIVE</b></span><button className={focusMode?'tool-button selected-tool':'tool-button'} onClick={()=>setFocusMode(!focusMode)} title="Toggle focus mode"><Crosshair size={15}/></button><button className="tool-button" onClick={()=>choose(objects[3])} title="Reset selection"><RotateCcw size={15}/></button></div></div>
-        <div className="canvas-wrap"><Universe items={objects} selected={selected} onSelect={choose}/><div className="canvas-vignette"/><div className="canvas-label top-left"><span className="label-line"/> MILKY WAY · LOCAL VIEW</div><div className="canvas-label bottom-left"><span className="pulse-dot"/> GRAVITY FIELD ACTIVE</div><div className="canvas-hint"><span>DRAG TO ROTATE</span><span>SCROLL TO ZOOM</span></div>
+        <div className="canvas-wrap"><Suspense fallback={<div className="scene-loading">Preparing the starfield…</div>}><Universe items={objects} selected={selected} onSelect={choose}/></Suspense><div className="canvas-vignette"/><div className="canvas-label top-left"><span className="label-line"/> MILKY WAY · LOCAL VIEW</div><div className="canvas-label bottom-left"><span className="pulse-dot"/> GRAVITY FIELD ACTIVE</div><div className="canvas-hint"><span>DRAG TO ROTATE</span><span>SCROLL TO ZOOM</span></div>
           {!focusMode && <div className="object-tooltip"><span className="tooltip-index">SELECTED OBJECT</span><b>{selected.name}</b><small>{formatKind(selected.kind)} · {selected.distance}</small></div>}
         </div>
         <div className="stage-footer"><span>01 <i/> 14 CELESTIAL OBJECTS</span><span>NOT TO SCALE · CONCEPTUAL SPATIAL MODEL</span><span>DATA: NASA / ESA REFERENCES</span></div>
@@ -55,7 +76,7 @@ export default function App() {
       </aside>}
       {!showInfo && <button className="reopen-info" onClick={()=>setShowInfo(true)}><Info size={16}/> Object details</button>}
     </section>
-    {showCatalogue && <div className="modal-backdrop" onClick={()=>setShowCatalogue(false)}><section className="catalogue-modal" onClick={e=>e.stopPropagation()}><div className="catalogue-head"><div><span className="eyebrow">THE COSMIC INDEX</span><h2>Find your next <em>destination.</em></h2></div><button className="icon-button" onClick={()=>setShowCatalogue(false)} aria-label="Close catalogue"><X size={18}/></button></div><div className="catalogue-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search objects, types, descriptions..."/></div><div className="catalogue-filters">{filters.map(f=><button key={f} className={activeFilter===f?'active':''} onClick={()=>setActiveFilter(f)}>{f}</button>)}</div><div className="catalogue-list">{filtered.map((item,i)=><button className="catalogue-item" key={item.id} onClick={()=>choose(item)}><span className="catalogue-number">{String(i+1).padStart(2,'0')}</span><span className="catalogue-orb" style={{'--planet-color':item.color} as React.CSSProperties}/><span className="catalogue-name"><b>{item.name}</b><small>{item.subtitle}</small></span><span className="catalogue-kind">{item.kind}</span><span className="catalogue-distance">{item.distance}</span><ChevronRight size={16}/></button>)}{filtered.length===0&&<p className="empty-state">No objects found. Try another search.</p>}</div><div className="catalogue-foot">{filtered.length} OBJECTS IN VIEW <span>SELECT AN OBJECT TO OPEN ITS DOSSIER</span></div></section></div>}
+    {showCatalogue && <div className="modal-backdrop" onClick={()=>setShowCatalogue(false)}><section className="catalogue-modal" onClick={e=>e.stopPropagation()}><div className="catalogue-head"><div><span className="eyebrow">THE COSMIC INDEX</span><h2>Find your next <em>destination.</em></h2></div><button className="icon-button" onClick={()=>setShowCatalogue(false)} aria-label="Close catalogue"><X size={18}/></button></div><div className="catalogue-search"><Search size={17}/><input ref={catalogueSearchRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search objects, types, descriptions..."/></div><div className="catalogue-filters">{filters.map(f=><button key={f} className={activeFilter===f?'active':''} onClick={()=>setActiveFilter(f)}>{f}</button>)}</div><div className="catalogue-list">{filtered.map((item,i)=><button className="catalogue-item" key={item.id} onClick={()=>choose(item)}><span className="catalogue-number">{String(i+1).padStart(2,'0')}</span><span className="catalogue-orb" style={{'--planet-color':item.color} as React.CSSProperties}/><span className="catalogue-name"><b>{item.name}</b><small>{item.subtitle}</small></span><span className="catalogue-kind">{item.kind}</span><span className="catalogue-distance">{item.distance}</span><ChevronRight size={16}/></button>)}{filtered.length===0&&<p className="empty-state">No objects found. Try another search.</p>}</div><div className="catalogue-foot">{filtered.length} OBJECTS IN VIEW <span>SELECT AN OBJECT TO OPEN ITS DOSSIER</span></div></section></div>}
     <footer className="bottom-bar"><span>© 2026 COSMOS EXPLORER</span><span>MADE FOR THE CURIOUS <i>✳</i></span><a href="https://science.nasa.gov/" target="_blank" rel="noreferrer">SCIENCE, NOT FICTION ↗</a></footer>
   </main>
 }

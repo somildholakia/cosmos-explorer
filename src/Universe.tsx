@@ -1,58 +1,179 @@
-import { useMemo, useRef } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Stars, Float, Sparkles } from '@react-three/drei'
+import { useEffect, useMemo, useRef } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { OrbitControls, Stars, Sparkles } from '@react-three/drei'
 import * as THREE from 'three'
 import type { SpaceObject } from './data'
 
-function Planet({ item, index, selected, onSelect }: { item: SpaceObject; index: number; selected: boolean; onSelect: (item: SpaceObject) => void }) {
-  const mesh = useRef<THREE.Mesh>(null!)
-  const group = useRef<THREE.Group>(null!)
-  const isSun = item.id === 'sun'
-  const isMoon = item.kind === 'Moon'
-  const isRinged = item.id === 'saturn'
-  const orbitRadius = item.orbit * .66
-  const material = useMemo(() => new THREE.MeshStandardMaterial({ color: item.color, roughness: item.kind === 'Star' ? .38 : .82, metalness: .02, emissive: isSun ? item.color : item.color, emissiveIntensity: isSun ? 1.35 : selected ? .22 : .035 }), [item.color, item.kind, isSun, selected])
-  useFrame(({ clock }) => {
-    if (!group.current) return
-    const t = clock.elapsedTime * item.speed * .075 + index * .7
-    if (!isSun) {
-      group.current.position.x = Math.cos(t) * orbitRadius
-      group.current.position.z = Math.sin(t) * orbitRadius * .68
+function positionFor(item: SpaceObject, time: number, index: number) {
+  if (item.id === 'sun') return new THREE.Vector3(0, 0, 0)
+  if (item.id === 'moon') {
+    const earthAngle = time * objectsSpeed('earth') + 3 * .7
+    const moonAngle = time * item.speed * .075 + index * .7
+    const earthX = Math.cos(earthAngle) * 4.25 * .66
+    const earthZ = Math.sin(earthAngle) * 4.25 * .66 * .68
+    return new THREE.Vector3(earthX + Math.cos(moonAngle) * .74, .12, earthZ + Math.sin(moonAngle) * .74)
+  }
+  const angle = time * item.speed * .075 + index * .7
+  return new THREE.Vector3(
+    Math.cos(angle) * item.orbit * .66,
+    item.kind === 'Galaxy' ? 1.4 : item.kind === 'Nebula' ? -.7 : 0,
+    Math.sin(angle) * item.orbit * .66 * .68
+  )
+}
+
+function objectsSpeed(id: string) {
+  return id === 'earth' ? .86 * .075 : .075
+}
+
+function OrbitTrack({ radius }: { radius: number }) {
+  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.035, 0]}>
+    <ringGeometry args={[radius - .009, radius + .009, 180]} />
+    <meshBasicMaterial color="#8292ad" transparent opacity={.19} side={THREE.DoubleSide} />
+  </mesh>
+}
+
+function GalaxyStructure({ color }: { color: string }) {
+  const geometry = useMemo(() => {
+    const positions: number[] = []
+    const colors: number[] = []
+    const tint = new THREE.Color(color)
+    for (let i = 0; i < 1700; i++) {
+      const arm = i % 4
+      const radius = .08 + Math.pow(Math.random(), .72) * 1.25
+      const angle = arm * Math.PI / 2 + radius * 3.7 + (Math.random() - .5) * .62
+      positions.push(Math.cos(angle) * radius, (Math.random() - .5) * .12, Math.sin(angle) * radius)
+      const c = tint.clone().lerp(new THREE.Color('#fff1d7'), Math.random() * .48)
+      colors.push(c.r, c.g, c.b)
     }
-    if (mesh.current) mesh.current.rotation.y += .0025
-  })
-  return <group ref={group} position={[isSun ? 0 : orbitRadius, 0, 0]}>
-    {!isSun && <mesh rotation={[-Math.PI/2,0,0]}><ringGeometry args={[orbitRadius-.008,orbitRadius+.008,128]} /><meshBasicMaterial color="#71839e" transparent opacity={.14} side={THREE.DoubleSide} /></mesh>}
-    <mesh ref={mesh} onClick={(e) => { e.stopPropagation(); onSelect(item) }} onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer' }} onPointerOut={() => { document.body.style.cursor = 'auto' }} material={material}>
-      <sphereGeometry args={[item.size * (isSun ? 1 : .64), 48, 48]} />
-    </mesh>
-    {isSun && <mesh scale={1.55}><sphereGeometry args={[item.size*.64,32,32]} /><meshBasicMaterial color="#f7b85d" transparent opacity={.08} side={THREE.BackSide} /></mesh>}
-    {isRinged && <mesh rotation={[Math.PI/2.35,0,0]}><ringGeometry args={[item.size*.72,item.size*1.28,96]} /><meshStandardMaterial color="#d5bd91" side={THREE.DoubleSide} transparent opacity={.72} roughness={1} /></mesh>}
-    {selected && <mesh><sphereGeometry args={[item.size*.64*1.22,32,32]} /><meshBasicMaterial color="#f1c98a" wireframe transparent opacity={.34} /></mesh>}
-    {isMoon && <pointLight color="#b8d8ff" intensity={.12} distance={2} />}
+    const result = new THREE.BufferGeometry()
+    result.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    result.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+    return result
+  }, [color])
+  return <points geometry={geometry}>
+    <pointsMaterial size={.024} vertexColors transparent opacity={.92} depthWrite={false} sizeAttenuation />
+  </points>
+}
+
+function NebulaStructure({ color }: { color: string }) {
+  return <group>
+    {Array.from({ length: 9 }, (_, i) => (
+      <mesh key={i} position={[
+        Math.sin(i * 2.1) * .53,
+        Math.cos(i * 1.7) * .3,
+        Math.sin(i * .9) * .47
+      ]} scale={[.38 + (i % 3) * .13, .3 + (i % 2) * .16, .35 + (i % 4) * .06]}>
+        <sphereGeometry args={[1, 24, 24]} />
+        <meshBasicMaterial color={color} transparent opacity={.12} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    ))}
+    <Sparkles count={65} scale={2.1} size={2} speed={.22} opacity={.72} color={color} />
   </group>
 }
 
-function Scene({ selected, onSelect }: { selected: SpaceObject; onSelect: (item: SpaceObject) => void }) {
+function Planet({ item, index, selected, onSelect }: {
+  item: SpaceObject
+  index: number
+  selected: boolean
+  onSelect: (item: SpaceObject) => void
+}) {
+  const mesh = useRef<THREE.Mesh>(null!)
+  const group = useRef<THREE.Group>(null!)
+  const isSun = item.id === 'sun'
+  const isEarth = item.id === 'earth'
+  const isSaturn = item.id === 'saturn'
+  const isBlackHole = item.kind === 'Black hole'
+  const radius = item.size * .64
+  const material = useMemo(() => new THREE.MeshStandardMaterial({
+    color: isBlackHole ? '#020308' : item.color,
+    roughness: isSun ? .36 : .84,
+    metalness: isBlackHole ? .18 : .025,
+    emissive: isSun ? item.color : selected ? item.color : '#000000',
+    emissiveIntensity: isSun ? 1.5 : selected ? .13 : .012
+  }), [item.color, isSun, isBlackHole, selected])
+
+  useFrame(({ clock }) => {
+    if (!group.current) return
+    const p = positionFor(item, clock.elapsedTime, index)
+    group.current.position.copy(p)
+    if (mesh.current && !isBlackHole) mesh.current.rotation.y += isSun ? .0008 : .0022
+  })
+
   return <>
-    <color attach="background" args={['#080b12']} />
-    <fog attach="fog" args={['#080b12', 22, 52]} />
-    <ambientLight intensity={.42} />
-    <pointLight position={[0,0,0]} intensity={95} color="#ffd08a" distance={36} decay={2} />
-    <Stars radius={90} depth={55} count={4800} factor={3.2} saturation={.22} fade speed={.28} />
-    <Sparkles count={110} scale={38} size={1.6} speed={.18} opacity={.38} color="#9bb8e9" />
-    <Float speed={.28} rotationIntensity={.02} floatIntensity={.06}>
-      {/** Keep the solar system deliberately legible rather than physically scaled. */}
-      {/** The outer catalogue objects act as navigable deep-space landmarks. */}
-    </Float>
-    {/** scene items are mapped in parent */}
-    <OrbitControls makeDefault enableDamping dampingFactor={.055} minDistance={4} maxDistance={42} enablePan rotateSpeed={.55} zoomSpeed={.72} />
+    {item.kind === 'Planet' && item.orbit > 0 && <OrbitTrack radius={item.orbit * .66} />}
+    <group ref={group} position={[item.orbit * .66, 0, 0]}>
+      {item.kind === 'Galaxy' ? <GalaxyStructure color={item.color} /> :
+       item.kind === 'Nebula' ? <NebulaStructure color={item.color} /> : <>
+        <mesh ref={mesh} material={material}
+          onClick={e => { e.stopPropagation(); onSelect(item) }}
+          onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
+          onPointerOut={() => { document.body.style.cursor = 'auto' }}>
+          <sphereGeometry args={[radius, 64, 64]} />
+        </mesh>
+        {isSun && <>
+          <mesh scale={1.65}><sphereGeometry args={[radius, 40, 40]} /><meshBasicMaterial color="#ffbf69" transparent opacity={.075} side={THREE.BackSide} /></mesh>
+          <mesh scale={2.2}><sphereGeometry args={[radius, 32, 32]} /><meshBasicMaterial color="#e89b51" transparent opacity={.025} side={THREE.BackSide} /></mesh>
+        </>}
+        {isEarth && <mesh scale={1.12}><sphereGeometry args={[radius, 48, 48]} /><meshBasicMaterial color="#6ebbe9" transparent opacity={.13} side={THREE.BackSide} /></mesh>}
+        {isSaturn && <mesh rotation={[Math.PI / 2.25, 0, 0]}>
+          <ringGeometry args={[radius * 1.18, radius * 2.05, 128]} />
+          <meshStandardMaterial color="#d7c29b" side={THREE.DoubleSide} transparent opacity={.76} roughness={1} />
+        </mesh>}
+        {isBlackHole && <>
+          <mesh rotation={[Math.PI / 2.45, 0, 0]} scale={[1.75, .52, 1]}>
+            <torusGeometry args={[radius * 1.16, radius * .25, 24, 140]} />
+            <meshBasicMaterial color="#ffac62" transparent opacity={.82} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2.45, 0, 0]} scale={[1.58, .38, 1]}>
+            <torusGeometry args={[radius * 1.22, radius * .07, 16, 120]} />
+            <meshBasicMaterial color="#fff0c2" transparent opacity={.7} />
+          </mesh>
+        </>}
+        {selected && <mesh scale={1.3}>
+          <sphereGeometry args={[radius, 36, 36]} />
+          <meshBasicMaterial color="#f0c88e" wireframe transparent opacity={.28} />
+        </mesh>}
+      </>}
+    </group>
   </>
 }
 
-export default function Universe({ items, selected, onSelect }: { items: SpaceObject[]; selected: SpaceObject; onSelect: (item: SpaceObject) => void }) {
-  return <Canvas camera={{ position:[0,13,23], fov:46 }} dpr={[1,1.7]} gl={{ antialias:true, alpha:false }}>
-    <Scene selected={selected} onSelect={onSelect} />
-    {items.map((item,index) => <Planet key={item.id} item={item} index={index} selected={selected.id===item.id} onSelect={onSelect} />)}
+function Scene({ items, selected, onSelect }: {
+  items: SpaceObject[]
+  selected: SpaceObject
+  onSelect: (item: SpaceObject) => void
+}) {
+  const controls = useRef<any>(null)
+  const { camera } = useThree()
+
+  useEffect(() => {
+    const index = items.findIndex(item => item.id === selected.id)
+    const point = positionFor(selected, 0, Math.max(0, index))
+    const distance = Math.max(5.5, selected.size * 8 + 3)
+    camera.position.set(point.x + distance * .42, point.y + distance * .42, point.z + distance)
+    controls.current?.target.copy(point)
+    controls.current?.update()
+  }, [camera, items, selected, selected.id])
+
+  return <>
+    <color attach="background" args={['#080b12']} />
+    <fog attach="fog" args={['#080b12', 27, 78]} />
+    <ambientLight intensity={.38} />
+    <pointLight position={[0, 0, 0]} intensity={105} color="#ffd08a" distance={42} decay={2} />
+    <hemisphereLight color="#b8c9e8" groundColor="#080a10" intensity={.2} />
+    <Stars radius={110} depth={70} count={5200} factor={3.1} saturation={.26} fade speed={.22} />
+    <Sparkles count={145} scale={54} size={1.7} speed={.16} opacity={.35} color="#9bb8e9" />
+    {items.map((item, index) => <Planet key={item.id} item={item} index={index} selected={selected.id === item.id} onSelect={onSelect} />)}
+    <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={.06} minDistance={2.8} maxDistance={70} enablePan rotateSpeed={.58} zoomSpeed={.78} />
+  </>
+}
+
+export default function Universe({ items, selected, onSelect }: {
+  items: SpaceObject[]
+  selected: SpaceObject
+  onSelect: (item: SpaceObject) => void
+}) {
+  return <Canvas camera={{ position: [0, 11, 23], fov: 45, near: .1, far: 180 }} dpr={[1, 1.5]} gl={{ antialias: true, alpha: false }}>
+    <Scene items={items} selected={selected} onSelect={onSelect} />
   </Canvas>
 }
